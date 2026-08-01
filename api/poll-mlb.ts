@@ -46,7 +46,7 @@ async function getJson(url: string): Promise<any> {
 
 // ── 1. participant id -> team name (from /v4/fixtures; the odds feed has IDs only) ──
 async function fetchTeamNames(): Promise<Map<number, string>> {
-  const url = `${BASE}/fixtures?${qs({ tournamentIds: MLB_TOURNAMENT_ID, apiKey: KEY })}`;
+  const url = `${BASE}/fixtures?${qs({ tournamentId: MLB_TOURNAMENT_ID, apiKey: KEY })}`;
   const arr: any[] = await getJson(url);
   const names = new Map<number, string>();
   for (const fx of arr) {
