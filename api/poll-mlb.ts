@@ -17,10 +17,23 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const qs = (o: Record<string, string | number>) =>
   Object.entries(o).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
 
-async function getJson(url: string): Promise<any> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-  return res.json();
+// OddsPapi rate-limits bursts, so we pace calls and back off politely on 429.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const CALL_GAP_MS = Number(process.env.ODDSPAPI_CALL_GAP_MS || 1200);
+
+// Let the function run long enough to pace 8 calls (Vercel Hobby allows up to 60s).
+export const config = { maxDuration: 60 };
+
+async function getJson(url: string, retries = 2): Promise<any> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url);
+    if (res.status === 429 && attempt < retries) {
+      await sleep(2500 * (attempt + 1));
+      continue;
+    }
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json();
+  }
 }
 
 async function fetchTeamNames(): Promise<Map<number, string>> {
@@ -79,6 +92,7 @@ async function fetchMlbGames(): Promise<{ games: Game[]; diag: string[] }> {
   const diag: string[] = [];
 
   for (const book of BOOKMAKERS) {
+    await sleep(CALL_GAP_MS);
     const url = `${BASE}/odds-by-tournaments?${qs({
       tournamentIds: MLB_TOURNAMENT_ID, bookmaker: book, oddsFormat: 'american', apiKey: KEY,
     })}`;
