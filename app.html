@@ -653,6 +653,58 @@ function buildRail(){
   document.body.appendChild(rail);
   rail.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
 }
+
+//=================================================================
+//  LIVE DATA — read the poller's Supabase board, swap in for the demo slate
+//=================================================================
+const SB_URL  = 'https://qedwppnqudszajljyujd.supabase.co';
+const SB_ANON = 'sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';   // Supabase publishable key — safe in the browser
+const SLUG2KEY = { pinnacle:'pin', draftkings:'dk', fanduel:'fd', kalshi:'kalshi', polymarket:'poly' };
+const impliedCents = a => Math.round(100 / amDec(a));   // american -> exchange cents (implied %)
+const teamAbbr = name => (name||'').trim().split(/\s+/).pop().slice(0,3).toUpperCase();
+
+async function sbGet(path){
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers:{ apikey:SB_ANON, Authorization:`Bearer ${SB_ANON}` } });
+  if(!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+async function loadLive(){
+  if(!SB_ANON || SB_ANON.indexOf('PASTE_')===0) return;          // not configured -> stay on demo
+  try{
+    const [meta, quotes] = await Promise.all([
+      sbGet('mlb_games?select=id,away_team,home_team,commence'),
+      sbGet('mlb_quotes?select=game_id,venue,away_price,home_price'),
+    ]);
+    const byId = new Map(meta.map(m=>[m.id, m]));
+    const live = new Map();
+    for(const q of quotes){
+      const key = SLUG2KEY[q.venue]; if(!key) continue;          // only venues the board maps today
+      const m = byId.get(q.game_id); if(!m) continue;
+      let g = live.get(q.game_id);
+      if(!g){
+        g = { id:q.game_id, co:m.commence,
+              away:{n:m.away_team, ab:teamAbbr(m.away_team)},
+              home:{n:m.home_team, ab:teamAbbr(m.home_team)},
+              time:new Date(m.commence).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}), v:{} };
+        live.set(q.game_id, g);
+      }
+      g.v[key] = isExch(key)
+        ? { away:impliedCents(q.away_price), home:impliedCents(q.home_price) }
+        : { away:q.away_price, home:q.home_price };
+    }
+    const list = [...live.values()]
+      .filter(g=>Object.keys(g.v).length>=2)                      // cross-venue games only
+      .sort((a,b)=>new Date(a.co)-new Date(b.co)).slice(0,24);
+    if(list.length){
+      games.length=0; list.forEach(g=>games.push(g));             // swap demo -> live, in place
+      renderBoard();
+      console.log(`[BLUPRNT] live board loaded: ${list.length} games`);
+    }else{
+      console.warn('[BLUPRNT] no cross-venue games returned; staying on demo');
+    }
+  }catch(e){ console.warn('[BLUPRNT] live load failed, staying on demo:', e.message); }
+}
+loadLive();
 </script>
 </body>
 </html>
