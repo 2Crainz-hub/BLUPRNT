@@ -1,37 +1,16 @@
 // api/poll-mlb.ts — scheduled poller for BLUPRNT / THE BOARD (MLB moneylines).
-//
-// OddsPapi's /v4/odds-by-tournaments returns ONE bookmaker per call, so we loop the
-// books in BOOKMAKERS, merge their quotes per game, run the devig/arb engine, and
-// write a board snapshot to Supabase. Verified against a live Pinnacle pull (2026-06-28):
-//   - the moneyline market's bookmakerMarketId ends in "/moneyline"
-//   - its two outcomes are tagged bookmakerOutcomeId "home" / "away"
-//   - prices come back as priceAmerican (string) when oddsFormat=american
-//   - exchange venues (kalshi/polymarket) carry a non-null exchangeMeta
-//
-// The odds feed gives only participant IDs, so team NAMES come from /v4/fixtures (one
-// call, no bookmaker needed) joined by participant id.
-
 import { createClient } from '@supabase/supabase-js';
 import { computeBoard, findArbs, type Game, type VenueQuote } from '../lib/engine';
 
 const BASE = 'https://api.oddspapi.io/v4';
-const KEY = process.env.ODDSPAPI_KEY!;            // OddsPapi auth is a ?apiKey= query param
+const KEY = process.env.ODDSPAPI_KEY!;
 const MLB_TOURNAMENT_ID = 109;
 
-// One call per book. Override via env (comma list) without redeploying code.
-// NOTE: these are best-guess slugs — confirm exact spellings via GET /v4/bookmakers.
-// A wrong slug just means that book is skipped, not a crash.
 const BOOKMAKERS = (process.env.ODDSPAPI_BOOKMAKERS ||
   'pinnacle,draftkings,fanduel,betmgm,caesars,kalshi,polymarket')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 
-// The feed labels prices "home"/"away" but never says which participant is home.
-// If the board ever shows teams reversed, flip this single flag.
 const HOME_IS_PARTICIPANT1 = true;
-
-// Write a row as long as >=1 venue parsed (so the board isn't empty if only one slug is
-// right on the first deploy). Bump to 2 once you've confirmed several books flow, since
-// locks/edges only mean anything cross-venue.
 const MIN_VENUES = 1;
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -44,7 +23,6 @@ async function getJson(url: string): Promise<any> {
   return res.json();
 }
 
-// ── 1. participant id -> team name (from /v4/fixtures; the odds feed has IDs only) ──
 async function fetchTeamNames(): Promise<Map<number, string>> {
   const url = `${BASE}/fixtures?${qs({ tournamentId: MLB_TOURNAMENT_ID, apiKey: KEY })}`;
   const arr: any[] = await getJson(url);
@@ -58,7 +36,6 @@ async function fetchTeamNames(): Promise<Map<number, string>> {
   return names;
 }
 
-// ── 2. Pull one outcome pair from a bookmaker's moneyline market ──
 function american(player: any): number | null {
   const n = player ? Number(player.priceAmerican) : NaN;
   return Number.isFinite(n) ? n : null;
@@ -70,8 +47,6 @@ function pickPlayer(outcome: any): any | null {
 
 function readMoneyline(bm: any): { home: number; away: number; isExchange: boolean } | null {
   const markets = bm?.markets || {};
-  // Canonical baseball moneyline is market "131"; fall back to any market whose
-  // bookmakerMarketId path ends in /moneyline (covers books keyed differently).
   let mk: any = markets['131'];
   if (!mk || mk.marketActive === false) {
     mk = Object.values<any>(markets).find(
@@ -92,17 +67,16 @@ function readMoneyline(bm: any): { home: number; away: number; isExchange: boole
     if (side === 'home') home = price;
     else if (side === 'away') away = price;
   }
-  // Fallback for feeds that don't tag home/away: outcome key 131=home, 132=away.
   if (home == null) home = american(pickPlayer(mk.outcomes['131']));
   if (away == null) away = american(pickPlayer(mk.outcomes['132']));
   if (home == null || away == null) return null;
   return { home, away, isExchange };
 }
 
-// ── 3. Loop books, merge venues per game ──
-async function fetchMlbGames(): Promise<Game[]> {
+async function fetchMlbGames(): Promise<{ games: Game[]; diag: string[] }> {
   const names = await fetchTeamNames();
   const games = new Map<string, Game>();
+  const diag: string[] = [];
 
   for (const book of BOOKMAKERS) {
     const url = `${BASE}/odds-by-tournaments?${qs({
@@ -112,16 +86,20 @@ async function fetchMlbGames(): Promise<Game[]> {
     try {
       fixtures = await getJson(url);
     } catch (e: any) {
-      console.warn(`[poll-mlb] skip "${book}": ${e.message}`);   // bad slug / no coverage
+      console.warn(`[poll-mlb] skip "${book}": ${e.message}`);
+      diag.push(`${book}: ERROR ${String(e.message).slice(0, 90)}`);
       continue;
     }
 
+    let withBook = 0, mlOk = 0;
     for (const fx of fixtures) {
       if (!fx?.hasOdds || !fx.bookmakerOdds) continue;
       const bm = fx.bookmakerOdds[book];
       if (!bm || bm.suspended) continue;
+      withBook++;
       const ml = readMoneyline(bm);
       if (!ml) continue;
+      mlOk++;
 
       let g = games.get(fx.fixtureId);
       if (!g) {
@@ -136,20 +114,18 @@ async function fetchMlbGames(): Promise<Game[]> {
         };
         games.set(fx.fixtureId, g);
       }
-      // All prices normalized to American, so the engine treats every venue as a 'book'.
-      // (isExchange is retained for display badges but doesn't change the cost math here.)
       const q: VenueQuote = { key: book, type: 'book', homePrice: ml.home, awayPrice: ml.away };
       if (!g.venues.some((v) => v.key === book)) g.venues.push(q);
     }
+    diag.push(`${book}: ${fixtures.length} fixtures, ${withBook} carried book, ${mlOk} moneylines`);
   }
 
-  return [...games.values()].filter((g) => g.venues.length >= MIN_VENUES);
+  return { games: [...games.values()].filter((g) => g.venues.length >= MIN_VENUES), diag };
 }
 
-// ── 4. Compute board + write to Supabase ──
 export default async function handler(_req: any, res: any) {
   try {
-    const games = await fetchMlbGames();
+    const { games, diag } = await fetchMlbGames();
     const board = games.map(computeBoard);
     const now = new Date().toISOString();
 
@@ -173,7 +149,7 @@ export default async function handler(_req: any, res: any) {
     const locks = findArbs(games).length;
     const venuesSeen = [...new Set(games.flatMap((g) => g.venues.map((v) => v.key)))];
     console.log(`[poll-mlb] games=${games.length} venues=${venuesSeen.join(',')} locks=${locks}`);
-    res.status(200).json({ ok: true, games: games.length, venues: venuesSeen, locks });
+    res.status(200).json({ ok: true, games: games.length, venues: venuesSeen, locks, diag });
   } catch (e: any) {
     console.error('[poll-mlb]', e);
     res.status(500).json({ ok: false, error: e.message });
