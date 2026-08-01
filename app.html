@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUPRNT — Product Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0A0A0C;
+    --coral:#FF5C5C;--coral-deep:#E84F4F;
+    --teal:#34D9C0;--teal-deep:#2BC0AA;
+    --glass:rgba(70,79,94,.50);--glass-2:rgba(86,96,112,.55);--glass-sub:rgba(255,255,255,.06);
+    --bdr:rgba(255,255,255,.10);--bdr-2:rgba(255,255,255,.16);
+    --txt:#FFFFFF;--txt-2:#AEB4BE;--txt-3:#79818C;
+    --steam:#FFB35C;
+    --val:#34D9C0;--suspect:#FF5C5C;
+    --k:#6BA8FF;--p:#B98CFF;--b:#FFB35C;--fd:#FF9F57;--pin:#FFCB7A;
+    --mut:#79818C;--mut-2:#AEB4BE;--line-soft:rgba(255,255,255,.07);
+    --blur:blur(30px) saturate(125%);
+    --rad:22px;--rad-lg:26px;--rad-sm:14px;
+    --gl-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px -34px rgba(0,0,0,.85);
+  }
+  body{background:var(--bg);color:var(--txt);font-family:'Plus Jakarta Sans',system-ui,sans-serif;line-height:1.5;min-height:100vh;position:relative;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(30px);
+    background:
+      radial-gradient(620px 520px at 60% 8%, rgba(255,92,92,.16), transparent 60%),
+      radial-gradient(560px 520px at 12% 42%, rgba(52,217,192,.10), transparent 62%),
+      radial-gradient(680px 600px at 88% 88%, rgba(255,92,92,.10), transparent 62%);}
+  .mono{font-family:'Plus Jakarta Sans',sans-serif;font-variant-numeric:tabular-nums}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:6px}
+
+  /* shell */
+  .app{display:flex;min-height:100vh;position:relative;z-index:1}
+  .sidebar{width:252px;flex-shrink:0;padding:22px 15px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-right:1px solid var(--bdr)}
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 22px}
+  .brand svg{width:26px;height:26px}
+  .brand .nm{font-weight:800;letter-spacing:.06em;font-size:17px;color:var(--txt)}
+  .navlbl{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);padding:12px 8px 6px}
+  .nav{display:flex;flex-direction:column;gap:5px}
+  .navitem{position:relative;display:flex;align-items:center;gap:12px;padding:11px;border-radius:16px;cursor:pointer;border:1px solid transparent;transition:background .14s,border-color .14s}
+  .navitem:hover{background:rgba(255,255,255,.05)}
+  .navitem.on{background:rgba(52,217,192,.13);border-color:rgba(52,217,192,.4)}
+  .navitem .ico{width:34px;height:34px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--bdr);font-size:14px;font-weight:700;color:var(--txt-2)}
+  .navitem.on .ico{background:rgba(52,217,192,.18);border-color:rgba(52,217,192,.45);color:var(--teal)}
+  .navitem .nm{font-weight:700;font-size:14.5px;color:var(--txt)}
+  .navitem .ds{font-size:11px;font-weight:500;color:var(--txt-3);margin-top:1px}
+  .navitem .tag{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.05em;color:#0A0A0C;background:var(--coral);border-radius:6px;padding:3px 6px}
+  .side-foot{margin-top:auto;border-top:1px solid var(--bdr);padding-top:15px;display:flex;align-items:center;gap:11px}
+  .side-foot .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--teal));flex-shrink:0;border:2px solid rgba(255,255,255,.14)}
+  .side-foot .who{font-size:13.5px;font-weight:700;color:var(--txt)}
+  .side-foot .plan{font-size:10.5px;font-weight:600;color:var(--teal)}
+  .main{flex:1;min-width:0;padding:clamp(20px,3vw,40px) clamp(20px,3.4vw,48px) 64px}
+
+  /* topbar */
+  .topbar{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:28px}
+  .topbar .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--coral);display:flex;align-items:center;gap:9px}
+  .topbar h1{font-weight:800;letter-spacing:-.02em;font-size:clamp(28px,4.4vw,42px);margin-top:8px;line-height:1.0;color:var(--txt)}
+  .topbar .sub{color:var(--txt-2);font-size:14px;margin-top:8px;max-width:62ch}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .pill{font-size:12px;font-weight:700;border:1px solid var(--bdr-2);border-radius:999px;padding:9px 16px;color:var(--txt-2);display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);cursor:pointer}
+  .pill.on{border-color:rgba(52,217,192,.5);color:var(--teal);background:rgba(52,217,192,.12)}
+  .live{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--teal)}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .view{display:none;animation:fade .3s ease}.view.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* generic frosted panel */
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
+  .panel{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bdr);border-radius:var(--rad);overflow:hidden;box-shadow:var(--gl-shadow)}
+  .phead{display:flex;align-items:center;justify-content:space-between;padding:17px 21px;border-bottom:1px solid var(--bdr)}
+  .phead h3{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-2)}
+  .phead .meta{font-size:11.5px;font-weight:600;color:var(--txt-3);font-variant-numeric:tabular-nums}
+
+  /* === ARB = teal-highlighted frosted hero (Daily-Goal pattern) === */
+  .arb{position:relative;background:linear-gradient(135deg,rgba(52,217,192,.16),var(--glass) 60%);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(52,217,192,.5);border-radius:var(--rad-lg);overflow:hidden;margin-bottom:22px;box-shadow:0 0 50px -26px rgba(52,217,192,.5),var(--gl-shadow)}
+  .arb-head{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.1);flex-wrap:wrap}
+  .arb-head .lock{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);display:flex;align-items:center;gap:8px}
+  .arb-head .lock b{font-size:17px}
+  .arb-head .ttl{font-weight:800;font-size:20px;letter-spacing:-.02em;color:var(--txt)}
+  .arb-head .ex{color:var(--txt-2);font-size:13px;font-weight:500;max-width:47ch}
+  .arb-head .calc{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--txt-2)}
+  .arb-head .calc input{width:96px;background:rgba(255,255,255,.08);border:1px solid var(--bdr-2);color:var(--txt);font-weight:800;font-size:16px;padding:8px 11px;border-radius:12px;text-align:right;font-variant-numeric:tabular-nums}
+  .arb-head .calc input:focus{outline:none;border-color:var(--teal)}
+  .arb-body{padding:8px 14px 16px}
+  .arbcard{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:14px;align-items:center;padding:15px 9px;border-bottom:1px solid var(--line-soft)}
+  .arbcard:last-child{border-bottom:0}
+  .arbcard .match{font-weight:800;font-size:16px;color:var(--txt)}
+  .arbcard .match .t{font-size:11px;color:var(--txt-3);font-weight:500;margin-top:3px}
+  .leg{background:var(--glass-sub);border:1px solid var(--bdr);border-radius:14px;padding:11px 13px}
+  .leg .side{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;color:var(--txt)}
+  .leg .ven{font-size:11px;color:var(--txt-3);font-weight:600;margin-top:4px;display:flex;justify-content:space-between}
+  .leg .stake{font-size:13px;color:var(--txt-2);font-weight:600;margin-top:8px;border-top:1px solid var(--bdr);padding-top:7px;font-variant-numeric:tabular-nums}
+  .leg .stake b{color:var(--teal);font-weight:800}
+  .arbcard .ret{text-align:right}
+  .arbcard .ret .roi{font-weight:800;font-size:30px;color:var(--teal);line-height:1;font-variant-numeric:tabular-nums}
+  .arbcard .ret .lab{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-3);margin-top:3px}
+  .arbcard .ret .gtd{font-size:12px;font-weight:700;color:var(--teal);margin-top:6px;font-variant-numeric:tabular-nums}
+  .vdot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .arb-empty{padding:28px 20px;color:var(--txt-2);font-size:14px;font-weight:600;text-align:center}
+
+  /* board */
+  table.board{width:100%;border-collapse:collapse;font-size:14px}
+  .board th{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-3);text-align:right;padding:14px;border-bottom:1px solid var(--bdr)}
+  .board th:first-child{text-align:left}
+  .board td{padding:15px 14px;border-bottom:1px solid var(--line-soft);text-align:right;vertical-align:top;color:var(--txt);font-variant-numeric:tabular-nums}
+  .board td:first-child{text-align:left}
+  .board tbody tr{transition:background .12s}
+  .board tbody tr:hover{background:rgba(255,255,255,.04)}
+  .board .mt{font-weight:700;font-size:15px;color:var(--txt)}
+  .board .mt .t{font-size:11px;color:var(--txt-3);font-weight:500;display:block;margin-top:2px}
+  .sidecell .fair{color:var(--txt-3);font-size:12px;font-weight:500}
+  .sidecell .px{color:var(--txt);font-weight:700;font-size:15px;display:block;margin-top:3px}
+  .sidecell .px.best{color:var(--teal)}
+  .sidecell .ven{font-size:10.5px;color:var(--txt-3);display:block;margin-top:2px;font-weight:500}
+  .sidecell .ev{font-size:11px;margin-top:3px;display:block;font-weight:700}
+  .ev.pos{color:var(--teal)}.ev.neg{color:var(--txt-3)}
+  .badge{font-size:10.5px;font-weight:800;letter-spacing:.02em;border-radius:9px;padding:6px 11px;display:inline-block;white-space:nowrap}
+  .badge.arb{color:#0A0A0C;background:var(--teal)}
+  .badge.susp{color:var(--coral);border:1px solid rgba(255,92,92,.5);background:rgba(255,92,92,.1)}
+  .badge.edge{color:var(--teal);border:1px solid rgba(52,217,192,.5)}
+  .badge.flat{color:var(--txt-3);border:1px solid var(--bdr-2)}
+
+  /* wave */
+  .feed{display:flex;flex-direction:column}
+  .move{display:flex;align-items:center;gap:14px;padding:15px 21px;border-bottom:1px solid var(--line-soft);cursor:pointer;transition:background .12s}
+  .move:hover,.move.sel{background:rgba(255,255,255,.04)}
+  .move .arrow{font-size:18px;font-weight:800;width:20px;text-align:center}
+  .move .arrow.up{color:var(--teal)}.move .arrow.down{color:var(--coral)}
+  .move .mk{flex:1;min-width:0}
+  .move .mk .n{font-weight:700;font-size:14.5px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .move .mk .d{font-size:11px;color:var(--txt-3);font-weight:500;margin-top:2px}
+  .move .cls{font-size:10px;font-weight:800;letter-spacing:.05em;padding:5px 9px;border-radius:8px;text-transform:uppercase}
+  .cls.steam{color:#0A0A0C;background:var(--steam)}
+  .cls.noise{color:var(--txt-3);border:1px solid var(--bdr-2)}
+  .move .ago{font-size:11px;color:var(--txt-3);font-weight:500;width:48px;text-align:right;font-variant-numeric:tabular-nums}
+  .wchart{padding:22px}
+  .wstat{display:flex;gap:26px;margin-bottom:18px;flex-wrap:wrap}
+  .wstat .s .l{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-3)}
+  .wstat .s .v{font-weight:800;font-size:24px;margin-top:5px;color:var(--txt);font-variant-numeric:tabular-nums}
+
+  /* tail */
+  table.tail{width:100%;border-collapse:collapse;font-size:14px}
+  .tail th{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-3);text-align:right;padding:14px;border-bottom:1px solid var(--bdr)}
+  .tail th:first-child,.tail th:nth-child(2){text-align:left}
+  .tail td{padding:14px;border-bottom:1px solid var(--line-soft);text-align:right;color:var(--txt);font-variant-numeric:tabular-nums}
+  .tail td:nth-child(2){text-align:left}
+  .tail tbody tr{cursor:pointer;transition:background .12s}
+  .tail tbody tr:hover,.tail tbody tr.sel{background:rgba(255,255,255,.04)}
+  .tail .rk{font-weight:800;font-size:16px;color:var(--txt-2);width:30px}
+  .tail .wh{font-weight:700;font-size:14.5px;color:var(--txt)}
+  .tail .ad{font-size:11px;color:var(--txt-3);font-weight:500}
+  .tail .pos{color:var(--teal);font-weight:800}.tail .neg{color:var(--coral);font-weight:800}
+  .poslist{padding:6px 0}
+  .posrow{display:flex;align-items:center;gap:12px;padding:13px 21px;border-bottom:1px solid var(--line-soft)}
+  .posrow .s{flex:1}
+  .posrow .s .n{font-weight:700;font-size:14px;color:var(--txt)}
+  .posrow .s .d{font-size:11px;color:var(--txt-3);font-weight:500;margin-top:2px}
+  .posrow .amt{font-size:13.5px;color:var(--txt);font-weight:700;font-variant-numeric:tabular-nums}
+  .tailbtn{font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#0A0A0C;background:var(--teal);border:none;border-radius:11px;padding:9px 15px;cursor:pointer;transition:.13s}
+  .tailbtn:hover{background:var(--teal-deep)}
+
+  /* trueline */
+  .record{display:flex;border:1px solid var(--bdr);border-radius:var(--rad);overflow:hidden;margin-bottom:22px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--gl-shadow)}
+  .record .c{flex:1;padding:18px 22px;border-right:1px solid var(--bdr)}
+  .record .c:last-child{border-right:0}
+  .record .c .l{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-3)}
+  .record .c .v{font-weight:800;font-size:28px;margin-top:5px;color:var(--txt);font-variant-numeric:tabular-nums}
+  .record .c .v.pos{color:var(--teal)}
+  .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .pick{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bdr);border-radius:var(--rad);padding:20px;box-shadow:var(--gl-shadow)}
+  .pick .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .pick .conv{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border-radius:9px}
+  .conv.strong{color:#0A0A0C;background:var(--teal)}
+  .conv.play{color:var(--teal);border:1px solid rgba(52,217,192,.5)}
+  .conv.lean{color:var(--txt-2);border:1px solid var(--bdr-2)}
+  .pick .game{font-size:11.5px;color:var(--txt-3);font-weight:600}
+  .pick .call{font-weight:800;font-size:21px;letter-spacing:-.02em;margin-top:11px;color:var(--txt)}
+  .pick .call span{color:var(--teal)}
+  .pick .lines{display:flex;gap:22px;margin-top:15px}
+  .pick .lines .x .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--txt-3)}
+  .pick .lines .x .v{font-weight:800;font-size:18px;margin-top:3px;color:var(--txt);font-variant-numeric:tabular-nums}
+  .pick .lines .x .v.edge{color:var(--teal)}
+  .conf{margin-top:16px}
+  .conf .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+  .conf .bar i{display:block;height:100%;background:var(--teal)}
+  .conf .lab{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:var(--txt-3);margin-bottom:6px}
+  .pick .note{color:var(--txt-2);font-size:13px;font-weight:500;margin-top:15px;line-height:1.55;border-top:1px solid var(--line-soft);padding-top:13px}
+  .disc{font-size:11.5px;color:var(--txt-3);font-weight:500;margin-top:24px;line-height:1.65;max-width:82ch}
+
+  @media (max-width:1020px){.grid2{grid-template-columns:1fr}.arbcard{grid-template-columns:1fr 1fr;row-gap:12px}.arbcard .ret{grid-column:1/-1;text-align:left;display:flex;align-items:baseline;gap:14px}}
+  /* mobile bottom rail */
+  .mrail{display:none}
+  .railitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:none;cursor:pointer;padding:9px 4px;border-radius:16px;color:var(--txt-3);transition:background .14s,color .14s}
+  .railitem .rico{font-size:18px;line-height:1}
+  .railitem .rlbl{font-size:10px;font-weight:700}
+  .railitem.on{background:rgba(52,217,192,.15);color:var(--teal)}
+  .railitem:active{transform:scale(.96)}
+
+  @media (max-width:780px){
+    .sidebar{display:none}
+    .arbcard{grid-template-columns:1fr}
+    .arb-head .calc{margin-left:0;width:100%}
+    .main{padding-bottom:112px}
+    .mrail{display:flex;position:fixed;left:12px;right:12px;bottom:14px;z-index:60;gap:4px;padding:8px;
+      padding-bottom:calc(8px + env(safe-area-inset-bottom));border-radius:24px;
+      background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+      border:1px solid var(--bdr);box-shadow:0 20px 54px -22px rgba(0,0,0,.9)}
+  }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <div class="brand" onclick="location.href='/'">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path stroke="rgba(130,180,255,.55)" stroke-width="1.2" d="M16 16L6 9M16 16L26 8M16 16L25 25M16 16L7 24"/>
+        <circle cx="16" cy="16" r="4" fill="#7193ff"/><circle cx="6" cy="9" r="2.2" fill="#9ab4ff"/>
+        <circle cx="26" cy="8" r="2.2" fill="#9ab4ff"/><circle cx="25" cy="25" r="2.2" fill="#9ab4ff"/>
+        <circle cx="7" cy="24" r="2.2" fill="#9ab4ff"/>
+      </svg>
+      <span class="nm">BLUPRNT</span>
+    </div>
+    <div class="navlbl">Products</div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="av"></div>
+      <div><div class="who">Nick D.</div><div class="plan">Advanced plan</div></div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow" id="tEyebrow">THE BOARD</div>
+        <h1 id="tTitle">Every market, one board.</h1>
+        <div class="sub" id="tSub"></div>
+      </div>
+      <div class="right">
+        <div class="pill sport on">MLB</div>
+        <div class="pill sport">NBA · soon</div>
+        <div class="live"><span class="dot"></span> LIVE</div>
+      </div>
+    </div>
+
+    <section class="view on" id="view-board"></section>
+    <section class="view" id="view-wave"></section>
+    <section class="view" id="view-tail"></section>
+    <section class="view" id="view-trueline"></section>
+  </main>
+</div>
+
+<script>
+//=================================================================
+//  BLUPRNT — shared engine + mock slate
+//=================================================================
+const VENUES = ['kalshi','poly','dk','fd','pin'];
+const VEN = {
+  kalshi:{label:'Kalshi',   short:'Kalshi',   type:'exchange', color:'var(--k)'},
+  poly:  {label:'Polymarket',short:'Polymarket',type:'exchange',color:'var(--p)'},
+  dk:    {label:'DraftKings',short:'DraftKings',type:'book',    color:'var(--b)'},
+  fd:    {label:'FanDuel',   short:'FanDuel',   type:'book',    color:'var(--fd)'},
+  pin:   {label:'Pinnacle',  short:'Pinnacle',  type:'book',    color:'var(--pin)'},
+};
+const isExch = v => VEN[v].type==='exchange';
+
+// today's slate. exchange prices in cents (implied %); book prices in american odds.
+const games = [
+  { id:'tex-hou', away:{n:'Rangers',ab:'TEX'}, home:{n:'Astros',ab:'HOU'}, time:'7:10 PM CT',
+    v:{ kalshi:{away:52,home:50}, poly:{away:50,home:51}, dk:{away:-120,home:110}, fd:{away:-118,home:106}, pin:{away:-122,home:108} } },
+  { id:'nyy-bos', away:{n:'Yankees',ab:'NYY'}, home:{n:'Red Sox',ab:'BOS'}, time:'7:15 PM ET',
+    v:{ kalshi:{away:57,home:44}, poly:{away:58,home:42}, dk:{away:-142,home:130}, fd:{away:-138,home:126}, pin:{away:-135,home:122} } },
+  { id:'lad-sd',  away:{n:'Dodgers',ab:'LAD'}, home:{n:'Padres',ab:'SD'},  time:'9:40 PM PT',
+    v:{ kalshi:{away:80,home:24}, poly:{away:64,home:38}, dk:{away:-175,home:150}, fd:{away:-170,home:145}, pin:{away:-178,home:152} } },
+  { id:'atl-nym', away:{n:'Braves',ab:'ATL'},  home:{n:'Mets',ab:'NYM'},   time:'7:10 PM ET',
+    v:{ kalshi:{away:55,home:46}, poly:{away:54,home:47}, dk:{away:-118,home:108}, fd:{away:-115,home:104}, pin:{away:-120,home:110} } },
+  { id:'phi-mia', away:{n:'Phillies',ab:'PHI'},home:{n:'Marlins',ab:'MIA'},time:'6:40 PM ET',
+    v:{ kalshi:{away:63,home:42}, poly:{away:62,home:42}, dk:{away:-152,home:132}, fd:{away:-148,home:128}, pin:{away:-155,home:134} } },
+  { id:'sea-laa', away:{n:'Mariners',ab:'SEA'},home:{n:'Angels',ab:'LAA'}, time:'9:38 PM PT',
+    v:{ kalshi:{away:49,home:53}, poly:{away:48,home:53}, dk:{away:104,home:-115}, fd:{away:108,home:-118}, pin:{away:102,home:-112} } },
+];
+
+// ---- odds math ----
+const amDec = a => a>0 ? 1+a/100 : 1+100/Math.abs(a);
+const cost  = (v,price)=> isExch(v) ? price/100 : 1/amDec(price);      // $ paid per $1 returned (implied prob incl. vig)
+const pxLabel = (v,price)=> isExch(v) ? price+'¢' : (price>0?'+'+price:''+price);
+
+// devig each two-sided venue, find consensus by median (robust to one bad book), flag outliers
+function analyze(g){
+  const rows = VENUES.filter(v=>g.v[v]).map(v=>{
+    const ca=cost(v,g.v[v].away), ch=cost(v,g.v[v].home), tot=ca+ch;
+    return { v, awFair:ca/tot, hmFair:ch/tot };
+  });
+  const sorted=[...rows].map(r=>r.awFair).sort((a,b)=>a-b);
+  const med = sorted[Math.floor(sorted.length/2)];
+  rows.forEach(r=> r.suspect = Math.abs(r.awFair-med) > .08);
+  const clean = rows.filter(r=>!r.suspect);
+  const fairAway = clean.reduce((s,r)=>s+r.awFair,0)/clean.length;
+  const suspectV = rows.filter(r=>r.suspect).map(r=>r.v);
+  return { rows, fairAway, fairHome:1-fairAway, suspectV };
+}
+// best (cheapest) price for a side, excluding suspect venues
+function best(g, side, suspectV){
+  let b=null;
+  for(const v of VENUES){
+    if(!g.v[v] || suspectV.includes(v)) continue;
+    const c=cost(v, g.v[v][side]);
+    if(!b || c<b.cost) b={v, price:g.v[v][side], cost:c};
+  }
+  return b;
+}
+// list of locked, risk-free arbs (best away + best home cost < $1), suspect prices excluded
+function findArbs(){
+  return games.map(g=>{
+    const a=analyze(g);
+    const ba=best(g,'away',a.suspectV), bh=best(g,'home',a.suspectV);
+    const S=ba.cost+bh.cost;
+    return { g, a, ba, bh, S, roi:(1-S)/S };
+  }).filter(x=>x.S<1).sort((x,y)=>y.roi-x.roi);
+}
+
+//=================================================================
+//  NAV + ROUTER
+//=================================================================
+const PRODUCTS = [
+  { id:'board',    ico:'▦', nm:'The Board', ds:'Every market, side by side', eyebrow:'THE BOARD',
+    title:'Every market, one board.', sub:'Kalshi, Polymarket and the books on one screen — with risk-free locks surfaced first and fake edges flagged before you chase them.' },
+  { id:'wave',     ico:'∿', nm:'Wave', ds:'Line movement & steam', eyebrow:'WAVE',
+    title:'Feel the money move.', sub:'Where sharp action is moving the market in real time — and whether it’s real steam or just noise.' },
+  { id:'tail',     ico:'⊳', nm:'Tail', ds:'Smart-money wallets', eyebrow:'TAIL',
+    title:'Ride with the winners.', sub:'The most profitable wallets on Polymarket, what they’re backing right now, and what it’s cost to fade them.' },
+  { id:'trueline', ico:'⌁', nm:'TrueLine', ds:'Our model. Our call.', eyebrow:'TRUELINE',
+    title:'Our number on every game.', sub:'One honest line per game to measure the market against — and the calls we’re actually making, with a transparent record.' },
+];
+let current='board';
+
+function buildNav(){
+  document.getElementById('nav').innerHTML = PRODUCTS.map(p=>`
+    <div class="navitem ${p.id===current?'on':''}" data-go="${p.id}">
+      <div class="ico">${p.ico}</div>
+      <div><div class="nm">${p.nm}</div><div class="ds">${p.ds}</div></div>
+      ${p.id==='trueline'?'<div class="tag">ADV</div>':''}
+    </div>`).join('');
+  document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
+}
+function route(id){
+  current=id;
+  const p=PRODUCTS.find(x=>x.id===id);
+  document.getElementById('tEyebrow').textContent=p.eyebrow;
+  document.getElementById('tTitle').textContent=p.title;
+  document.getElementById('tSub').textContent=p.sub;
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
+  document.querySelectorAll('.railitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+//=================================================================
+//  VIEW 1 — THE BOARD (+ arbitrage module)
+//=================================================================
+let budget=200;
+function renderBoard(){
+  const arbs=findArbs();
+  const arbHTML = arbs.length ? arbs.map(x=>arbCard(x)).join('') :
+    `<div class="arb-empty">No risk-free locks on the board right now. We only surface a play when the math guarantees it — and never from a price we’ve flagged as suspect.</div>`;
+
+  document.getElementById('view-board').innerHTML = `
+    <div class="arb">
+      <div class="arb-head">
+        <div class="lock">⬡ Locked · risk-free &nbsp;<b>${arbs.length}</b></div>
+        <div>
+          <div class="ttl">Can’t-lose plays</div>
+          <div class="ex">Different venues, different prices — split your stake across both sides and you’re net positive no matter who wins.</div>
+        </div>
+        <div class="calc">Total stake <input id="budget" type="number" min="1" value="${budget}"> </div>
+      </div>
+      <div class="arb-body">${arbHTML}</div>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><h3>Tonight’s board · MLB moneyline</h3><div class="meta">${games.length} games · fair = vig-free consensus</div></div>
+      <table class="board">
+        <thead><tr>
+          <th>Game</th><th>Away</th><th>Home</th><th>Read</th>
+        </tr></thead>
+        <tbody>${games.map(boardRow).join('')}</tbody>
+      </table>
+    </div>
+    <div class="disc">Fair % is the vig-free consensus across venues; the best price is the cheapest available on either exchange or book. Edge is the expected value of taking that best price versus fair. Suspect prices sit far enough from consensus that we treat them as bad data — they’re excluded from fair, from edges, and from any lock. Illustrative prices for demonstration.</div>`;
+
+  const b=document.getElementById('budget');
+  b.addEventListener('input',()=>{ budget=Math.max(0,+b.value||0); document.querySelectorAll('[data-arb]').forEach(c=>updateArb(c)); });
+}
+
+function arbCard(x){
+  const tax = ` · `;
+  return `<div class="arbcard" data-arb="${x.g.id}">
+    <div class="match">${x.g.away.n} <span class="mono" style="color:var(--mut)">@</span> ${x.g.home.n}
+      <div class="t">${x.g.time}</div></div>
+    ${legHTML(x, 'away', x.ba)}
+    ${legHTML(x, 'home', x.bh)}
+    <div class="ret">
+      <div class="roi">+${(x.roi*100).toFixed(2)}%</div>
+      <div class="lab">Guaranteed</div>
+      <div class="gtd" data-profit>+$${(budget*(1/x.S-1)).toFixed(2)} locked</div>
+    </div>
+  </div>`;
+}
+function legHTML(x, side, b){
+  const team = side==='away'? x.g.away.n : x.g.home.n;
+  const stake = budget * b.cost / x.S;
+  return `<div class="leg">
+    <div class="side"><span class="vdot" style="background:${VEN[b.v].color}"></span>${team}</div>
+    <div class="ven"><span>${VEN[b.v].label}</span><span>${pxLabel(b.v,b.price)}</span></div>
+    <div class="stake" data-stake="${side}">Stake <b>$${stake.toFixed(2)}</b></div>
+  </div>`;
+}
+function updateArb(card){
+  const x=findArbs().find(a=>a.g.id===card.dataset.arb); if(!x) return;
+  card.querySelector('[data-stake="away"]').innerHTML=`Stake <b>$${(budget*x.ba.cost/x.S).toFixed(2)}</b>`;
+  card.querySelector('[data-stake="home"]').innerHTML=`Stake <b>$${(budget*x.bh.cost/x.S).toFixed(2)}</b>`;
+  card.querySelector('[data-profit]').textContent=`+$${(budget*(1/x.S-1)).toFixed(2)} locked`;
+}
+
+function boardRow(g){
+  const a=analyze(g);
+  const arb = findArbs().find(x=>x.g.id===g.id);
+  const ba=best(g,'away',a.suspectV), bh=best(g,'home',a.suspectV);
+  const evA=(a.fairAway/ba.cost-1)*100, evH=(a.fairHome/bh.cost-1)*100;
+  const sideCell=(fair,b,ev)=>{
+    const bestEv = ev>0.4;
+    return `<td><div class="sidecell">
+      <span class="fair">${(fair*100).toFixed(0)}% fair</span>
+      <span class="px ${bestEv?'best':''}">${pxLabel(b.v,b.price)}</span>
+      <span class="ven">${VEN[b.v].label}</span>
+      <span class="ev ${ev>0.4?'pos':'neg'}">${ev>0?'+':''}${ev.toFixed(1)}% EV</span>
+    </div></td>`;
+  };
+  let read;
+  if(arb) read=`<span class="badge arb">⬡ Lock +${(arb.roi*100).toFixed(2)}%</span>`;
+  else if(a.suspectV.length) read=`<span class="badge susp">⚠ ${VEN[a.suspectV[0]].label} suspect</span>`;
+  else if(Math.max(evA,evH)>1.2) read=`<span class="badge edge">Edge ${(Math.max(evA,evH)).toFixed(1)}%</span>`;
+  else read=`<span class="badge flat">Efficient</span>`;
+  return `<tr>
+    <td><div class="mt">${g.away.ab} @ ${g.home.ab}<span class="t">${g.away.n} at ${g.home.n} · ${g.time}</span></div></td>
+    ${sideCell(a.fairAway,ba,evA)}
+    ${sideCell(a.fairHome,bh,evH)}
+    <td style="text-align:right">${read}</td>
+  </tr>`;
+}
+
+//=================================================================
+//  VIEW 2 — WAVE (line movement / steam)
+//=================================================================
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+// build a movement series for a market: implied % over last ~6h, with one sharp move
+function series(seed, start, end, jumpAt, jumpSize){
+  const r=rng(seed), n=26, out=[]; let val=start;
+  for(let i=0;i<n;i++){
+    val += (r()-.5)*0.7;                       // noise
+    if(i===jumpAt) val += jumpSize;            // the steam event
+    val += (end-val)*(i/(n-1))*0.18;           // drift toward close
+    out.push(Math.max(2,Math.min(98,val)));
+  }
+  out[n-1]=end;
+  return out;
+}
+const waveMoves = [
+  { id:'tex-hou-h', mk:'Astros ML', g:'TEX @ HOU', from:44, to:50, ven:'DraftKings', cls:'steam', ago:'4m', seed:11, jump:7, jsz:4.5 },
+  { id:'nyy-bos-a', mk:'Yankees ML', g:'NYY @ BOS', from:54, to:58, ven:'Polymarket', cls:'steam', ago:'12m', seed:22, jump:9, jsz:3.2 },
+  { id:'lad-sd-a',  mk:'Dodgers ML', g:'LAD @ SD',  from:66, to:64, ven:'Pinnacle', cls:'noise', ago:'18m', seed:33, jump:-1, jsz:-1.3 },
+  { id:'phi-mia-a', mk:'Phillies ML',g:'PHI @ MIA', from:60, to:63, ven:'FanDuel', cls:'noise', ago:'25m', seed:44, jump:14,jsz:2.0 },
+  { id:'atl-nym-a', mk:'Braves ML',  g:'ATL @ NYM', from:50, to:54, ven:'Kalshi', cls:'steam', ago:'31m', seed:55, jump:6, jsz:3.6 },
+  { id:'sea-laa-h', mk:'Angels ML',  g:'SEA @ LAA', from:55, to:53, ven:'DraftKings', cls:'noise', ago:'47m', seed:66, jump:20,jsz:-1.4 },
+];
+let waveSel='tex-hou-h';
+function renderWave(){
+  document.getElementById('view-wave').innerHTML = `
+    <div class="grid2">
+      <div class="panel" style="overflow:hidden">
+        <div class="phead"><h3 id="wTitle"></h3><div class="meta" id="wMeta"></div></div>
+        <div class="wchart" id="wChart"></div>
+      </div>
+      <div class="panel" style="overflow:hidden">
+        <div class="phead"><h3>Steam feed · last hour</h3><div class="meta">sharp = $ moving the line</div></div>
+        <div class="feed" id="wFeed"></div>
+      </div>
+    </div>
+    <div class="disc">A move is “steam” when real money is pushing the number — fast, one-directional, and confirmed across books. “Noise” is a wobble that the market absorbs without the consensus moving. Track steam and you can get your number before the line catches up. Illustrative data.</div>`;
+  document.getElementById('wFeed').innerHTML = waveMoves.map(m=>`
+    <div class="move ${m.id===waveSel?'sel':''}" data-w="${m.id}">
+      <div class="arrow ${m.to>=m.from?'up':'down'}">${m.to>=m.from?'▲':'▼'}</div>
+      <div class="mk"><div class="n">${m.mk} <span class="mono" style="color:var(--mut);font-size:11px">${m.from}%→${m.to}%</span></div>
+        <div class="d">${m.g} · ${m.ven}</div></div>
+      <div class="cls ${m.cls}">${m.cls.toUpperCase()}</div>
+      <div class="ago">${m.ago}</div>
+    </div>`).join('');
+  document.querySelectorAll('[data-w]').forEach(el=>el.addEventListener('click',()=>{ waveSel=el.dataset.w; renderWave(); }));
+  drawWave();
+}
+function drawWave(){
+  const m=waveMoves.find(x=>x.id===waveSel);
+  const data=series(m.seed, m.from, m.to, m.jump, m.jsz);
+  const W=560,H=240,pad=30;
+  const min=Math.min(...data)-3, max=Math.max(...data)+3, rng2=max-min;
+  const X=i=> pad+(W-pad*1.4)*i/(data.length-1);
+  const Y=v=> H-pad-(H-pad*1.7)*(v-min)/rng2;
+  const path=data.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  const area=`M${X(0)} ${H-pad} `+data.map((v,i)=>'L'+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ')+` L${X(data.length-1)} ${H-pad} Z`;
+  const jx=X(m.jump), col = m.cls==='steam'?'var(--steam)':'var(--mut)';
+  const gridY=[min+rng2*.2,min+rng2*.5,min+rng2*.8].map(v=>`<line x1="${pad}" x2="${W-pad*.4}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line-soft)"/><text x="${pad-6}" y="${Y(v)+3}" fill="var(--mut)" font-size="9" text-anchor="end" font-family="IBM Plex Mono">${v.toFixed(0)}%</text>`).join('');
+  document.getElementById('wTitle').textContent=`${m.mk} · ${m.g}`;
+  document.getElementById('wMeta').textContent=`implied win % · last 6h`;
+  document.getElementById('wChart').innerHTML=`
+    <div class="wstat">
+      <div class="s"><div class="l">Open</div><div class="v">${m.from}%</div></div>
+      <div class="s"><div class="l">Now</div><div class="v">${m.to}%</div></div>
+      <div class="s"><div class="l">Move</div><div class="v" style="color:${m.to>=m.from?'var(--val)':'var(--suspect)'}">${m.to>=m.from?'+':''}${(m.to-m.from)}pt</div></div>
+      <div class="s"><div class="l">Read</div><div class="v" style="color:${col};font-size:16px;padding-top:5px">${m.cls.toUpperCase()}</div></div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="IBM Plex Mono">
+      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${col}" stop-opacity=".22"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+      ${gridY}
+      <line x1="${jx}" y1="${pad*.5}" x2="${jx}" y2="${H-pad}" stroke="${col}" stroke-width="1" stroke-dasharray="3 4" opacity=".7"/>
+      <text x="${jx+5}" y="${pad*.8}" fill="${col}" font-size="9">${m.cls==='steam'?'STEAM':'blip'}</text>
+      <path d="${area}" fill="url(#wg)"/>
+      <path d="${path}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${X(data.length-1)}" cy="${Y(data[data.length-1])}" r="4" fill="${col}"/>
+    </svg>`;
+}
+
+//=================================================================
+//  VIEW 3 — TAIL (smart-money wallets)
+//=================================================================
+const wallets = [
+  { h:'rookie_szn',   a:'0x9f…a21', roi:38.4, win:61, pnl:24820, vol:412000, spark:[2,5,4,8,7,11,10,14,18,17,22,25], picks:[['Rangers ML','TEX @ HOU','50¢','$14.2k'],['Yankees ML','NYY @ BOS','58¢','$9.0k'],['Braves ML','ATL @ NYM','54¢','$6.4k']] },
+  { h:'chalk_eater',  a:'0x3c…7e', roi:27.1, win:67, pnl:19140, vol:610000, spark:[3,3,6,5,9,8,12,11,15,16,19,21], picks:[['Dodgers ML','LAD @ SD','64¢','$22.0k'],['Phillies ML','PHI @ MIA','62¢','$11.3k']] },
+  { h:'fade_material',a:'0x77…0b', roi:24.6, win:55, pnl:31200, vol:980000, spark:[1,4,3,7,9,8,13,12,17,19,21,26], picks:[['Astros ML','TEX @ HOU','HOU +110','$8.1k'],['Mets ML','ATL @ NYM','47¢','$5.5k']] },
+  { h:'closing_line', a:'0x12…ce', roi:21.0, win:64, pnl:15630, vol:540000, spark:[2,2,4,6,5,8,9,11,12,14,15,18], picks:[['Red Sox ML','NYY @ BOS','BOS +130','$7.7k'],['Mariners ML','SEA @ LAA','48¢','$4.2k']] },
+  { h:'unit_pilot',   a:'0xab…44', roi:18.7, win:59, pnl:12410, vol:330000, spark:[1,3,2,5,4,7,6,9,10,11,13,15], picks:[['Rangers ML','TEX @ HOU','50¢','$3.6k'],['Marlins ML','PHI @ MIA','42¢','$2.9k']] },
+  { h:'no_vig_nick',  a:'0xde…91', roi:16.2, win:62, pnl:9870,  vol:288000, spark:[2,2,3,5,6,7,8,8,10,12,12,14], picks:[['Angels ML','SEA @ LAA','53¢','$5.0k'],['Yankees ML','NYY @ BOS','57¢','$3.1k']] },
+];
+let tailSel=0;
+function renderTail(){
+  document.getElementById('view-tail').innerHTML = `
+    <div class="grid2">
+      <div class="panel" style="overflow:hidden">
+        <div class="phead"><h3>Top wallets · 30-day P/L</h3><div class="meta">ranked by realized ROI</div></div>
+        <table class="tail"><thead><tr><th>#</th><th>Wallet</th><th>ROI</th><th class="hide-sm">Win</th><th>30d P/L</th><th>Trend</th></tr></thead>
+        <tbody id="walletRows"></tbody></table>
+      </div>
+      <div class="panel" style="overflow:hidden">
+        <div class="phead"><h3 id="tailWho"></h3><div class="meta" id="tailMeta"></div></div>
+        <div class="poslist" id="tailPos"></div>
+      </div>
+    </div>
+    <div class="disc">Wallets are ranked on realized, vig-adjusted return over a rolling 30 days, not raw profit — volume and win-rate are shown so you can tell a grinder from a one-hit wallet. “Tail” mirrors their open position sized to your bankroll. Illustrative on-chain data.</div>`;
+  document.getElementById('walletRows').innerHTML = wallets.map((w,i)=>`
+    <tr data-wal="${i}" class="${i===tailSel?'sel':''}">
+      <td class="rk">${i+1}</td>
+      <td><div class="wh">${w.h}</div><div class="ad mono">${w.a}</div></td>
+      <td class="pos">+${w.roi}%</td>
+      <td class="hide-sm">${w.win}%</td>
+      <td class="pos">+$${(w.pnl/1000).toFixed(1)}k</td>
+      <td>${spark(w.spark)}</td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-wal]').forEach(el=>el.addEventListener('click',()=>{ tailSel=+el.dataset.wal; renderTail(); }));
+  const w=wallets[tailSel];
+  document.getElementById('tailWho').textContent=w.h;
+  document.getElementById('tailMeta').textContent=`${w.a} · ${w.win}% win · $${(w.vol/1000).toFixed(0)}k volume`;
+  document.getElementById('tailPos').innerHTML = `
+    <div style="padding:10px 18px 4px;font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Open positions</div>`+
+    w.picks.map(p=>`<div class="posrow">
+      <div class="s"><div class="n">${p[0]}</div><div class="d">${p[1]} · entry ${p[2]}</div></div>
+      <div class="amt">${p[3]}</div>
+      <button class="tailbtn">Tail</button>
+    </div>`).join('');
+  document.querySelectorAll('.tailbtn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();b.textContent='Tailing ✓';b.style.color='var(--val)';b.style.borderColor='rgba(74,222,128,.45)';}));
+}
+function spark(vals){
+  const w=70,h=22,min=Math.min(...vals),max=Math.max(...vals),r=(max-min)||1;
+  const p=vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*w).toFixed(1)+' '+(h-((v-min)/r)*h).toFixed(1)).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${p}" fill="none" stroke="var(--val)" stroke-width="1.5"/></svg>`;
+}
+
+//=================================================================
+//  VIEW 4 — TRUELINE (model line + picks)
+//=================================================================
+const picks = [
+  { game:'TEX @ HOU', call:'Rangers', mkt:'ML', trueP:54, market:'50¢ · Polymarket', edge:'+5.4%', conf:.78, conv:'strong',
+    note:'Our line has Texas a slim favorite on starter edge and bullpen rest; the market still has this a coin flip. The cheapest Rangers price is on Polymarket, and it pairs into a clean lock with Houston +110.' },
+  { game:'NYY @ BOS', call:'Red Sox', mkt:'ML +130', trueP:45, market:'+130 · DraftKings', edge:'+4.0%', conf:.64, conv:'play',
+    note:'Boston’s true price sits around +118; +130 at the book is real value on the dog. Polymarket is even cheaper on the Yankees side, so there’s a lock here too — but the standalone Red Sox number is the better single bet.' },
+  { game:'PHI @ MIA', call:'Phillies', mkt:'ML', trueP:62, market:'-148 · FanDuel', edge:'+2.1%', conf:.6, conv:'play',
+    note:'Philadelphia grades a touch stronger than the books have them; FanDuel is the softest price on the favorite. No lock available — the Marlins side is fairly priced everywhere.' },
+  { game:'ATL @ NYM', call:'Mets', mkt:'ML', trueP:48, market:'47¢ · Polymarket', edge:'+1.6%', conf:.55, conv:'lean',
+    note:'Slight lean to the home dog at a fair-to-cheap exchange price. Thin edge — a small play, not a stand.' },
+  { game:'LAD @ SD', call:'Pass', mkt:'—', trueP:63, market:'Kalshi flagged', edge:'0.0%', conf:.3, conv:'lean',
+    note:'Kalshi is pricing the Dodgers ~16 points off the rest of the market — almost certainly a stale line, not an edge. We pass until it re-syncs rather than book a fake number.' },
+];
+function renderTrueline(){
+  document.getElementById('view-trueline').innerHTML = `
+    <div class="record">
+      <div class="c"><div class="l">Record · 30d</div><div class="v">214–176</div></div>
+      <div class="c"><div class="l">ROI</div><div class="v pos">+7.8%</div></div>
+      <div class="c"><div class="l">Closing-line value</div><div class="v pos">+2.6%</div></div>
+      <div class="c"><div class="l">Plays graded</div><div class="v">390</div></div>
+    </div>
+    <div class="picks">${picks.map(pickCard).join('')}</div>
+    <div class="disc">TrueLine is our vig-free model price for each game; the call is shown only where our number diverges enough from the best market price to clear our threshold. Conviction reflects edge size and confidence, not certainty. Closing-line value — how our entry compares to where the market closes — is the honest scoreboard, and we publish it whether it’s pretty or not. Illustrative model output, not betting advice.</div>`;
+}
+function pickCard(p){
+  const passed = p.call==='Pass';
+  return `<div class="pick">
+    <div class="top">
+      <div class="game">${p.game}</div>
+      <div class="conv ${p.conv}">${passed?'PASS':p.conv.toUpperCase()}</div>
+    </div>
+    <div class="call">${passed?'<span style="color:var(--mut-2)">No play</span>':`<span>${p.call}</span> ${p.mkt}`}</div>
+    <div class="lines">
+      <div class="x"><div class="l">TrueLine</div><div class="v">${p.trueP}%</div></div>
+      <div class="x"><div class="l">Market</div><div class="v">${p.market}</div></div>
+      <div class="x"><div class="l">Edge</div><div class="v ${passed?'':'edge'}">${p.edge}</div></div>
+    </div>
+    <div class="conf">
+      <div class="lab"><span>Confidence</span><span>${Math.round(p.conf*100)}%</span></div>
+      <div class="bar"><i style="width:${p.conf*100}%"></i></div>
+    </div>
+    <div class="note">${p.note}</div>
+  </div>`;
+}
+
+//=================================================================
+//  INIT
+//=================================================================
+buildNav();
+buildRail();
+renderBoard(); renderWave(); renderTail(); renderTrueline();
+route('board');
+
+function buildRail(){
+  const rail=document.createElement('nav');
+  rail.className='mrail';
+  rail.innerHTML=PRODUCTS.map(p=>`<button class="railitem ${p.id===current?'on':''}" data-go="${p.id}"><span class="rico">${p.ico}</span><span class="rlbl">${p.nm.replace('The ','')}</span></button>`).join('');
+  document.body.appendChild(rail);
+  rail.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
+}
+</script>
+</body>
+</html>

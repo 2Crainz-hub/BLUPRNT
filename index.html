@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every market, one board.</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #05070b; color: #fff; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { height: 620vh; overflow-x: hidden; }
+
+    .stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(41, 121, 255, .16), transparent 28%),
+        radial-gradient(circle at 70% 22%, rgba(255, 154, 60, .08), transparent 22%),
+        linear-gradient(180deg, #05070b 0%, #080b12 60%, #030407 100%);
+    }
+
+    .noise {
+      position: absolute;
+      inset: 0;
+      opacity: .16;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
+      mix-blend-mode: screen;
+    }
+
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    .copy {
+      position: absolute;
+      left: clamp(24px, 6vw, 88px);
+      top: 50%;
+      transform: translateY(-50%);
+      max-width: 620px;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      margin: 0 0 20px;
+      font-size: 12px;
+      letter-spacing: .26em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.52);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(50px, 8vw, 104px);
+      line-height: .9;
+      letter-spacing: -.075em;
+      font-weight: 760;
+      text-wrap: balance;
+    }
+
+    .sub {
+      margin-top: 24px;
+      font-size: clamp(17px, 2vw, 24px);
+      line-height: 1.45;
+      color: rgba(255,255,255,.62);
+      max-width: 500px;
+    }
+
+    .copy span { display: block; }
+    .line2 { color: rgba(255,255,255,.54); }
+
+    .cta {
+      margin-top: 34px;
+      display: flex;
+      gap: 12px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: .8s ease;
+      pointer-events: auto;
+    }
+    .cta.visible { opacity: 1; transform: translateY(0); }
+    input {
+      width: 250px;
+      height: 52px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.07);
+      color: #fff;
+      padding: 0 20px;
+      outline: none;
+      backdrop-filter: blur(14px);
+    }
+    button {
+      height: 52px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0 22px;
+      background: #fff;
+      color: #05070b;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .progress {
+      position: fixed;
+      right: 26px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 180px;
+      width: 2px;
+      background: rgba(255,255,255,.12);
+      z-index: 10;
+      border-radius: 10px;
+    }
+    .bar { width: 100%; height: 0%; background: rgba(255,255,255,.8); border-radius: 10px; }
+
+    .hint {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,.48);
+      font-size: 13px;
+      letter-spacing: .08em;
+      z-index: 9;
+      animation: pulse 1.7s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { opacity: .35; transform: translateX(-50%) translateY(5px); } }
+
+    @media (max-width: 760px) {
+      .copy { top: 16%; transform: none; left: 22px; right: 22px; }
+      .sub { max-width: 320px; }
+      .cta { flex-direction: column; width: min(320px, 100%); }
+      input, button { width: 100%; }
+      .progress { display: none; }
+    }
+    .finale {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(41,121,255,.16), transparent 42%),
+        linear-gradient(180deg, #05070b 0%, #080b12 55%, #030407 100%);
+    }
+    .finale h2 {
+      margin: 0;
+      font-size: clamp(40px, 7vw, 84px);
+      line-height: .92;
+      letter-spacing: -.06em;
+      font-weight: 760;
+      text-wrap: balance;
+    }
+    .finale .eyebrow { text-align: center; }
+    .finale .sub { margin: 22px auto 0; max-width: 440px; text-align: center; }
+    .finale .cta { justify-content: center; margin-top: 34px; pointer-events: inherit; }
+
+    .access-btn {
+      position: fixed;
+      top: 24px;
+      right: 26px;
+      z-index: 30;
+      width: auto;
+      height: 40px;
+      padding: 0 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.07);
+      backdrop-filter: blur(14px);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      cursor: pointer;
+      transition: opacity .4s ease, background .2s ease, border-color .2s ease;
+    }
+    .access-btn:hover { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.3); }
+
+    /* ===== shared sub-page system ===== */
+    .overlay-bg {
+      position: fixed; inset: 0; z-index: 35;
+      opacity: 0; pointer-events: none; transition: opacity .45s ease;
+      background: linear-gradient(180deg, #05070b 0%, #080b12 55%, #030407 100%);
+    }
+    .overlay-bg.show { opacity: 1; pointer-events: auto; }
+    .overlay-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .overlay-veil { position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 42%, rgba(5,7,11,.30), rgba(5,7,11,.80) 82%); }
+
+    .subpage { position: fixed; inset: 0; z-index: 40; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+    .subpage.open { opacity: 1; pointer-events: auto; }
+    .subpage.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .subpage-inner { position: relative; width: 100%; max-width: 1060px; margin: 0 auto; padding: 104px 24px 80px; }
+    .subpage-inner.center { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    body.locked { overflow: hidden; }
+
+    .icon-btn {
+      position: fixed; top: 24px; width: auto; min-width: 42px; height: 42px; padding: 0 15px;
+      border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07);
+      backdrop-filter: blur(14px); color: #fff; font-size: 18px; line-height: 1; cursor: pointer;
+      z-index: 50; transition: background .2s ease;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,.13); }
+    .icon-btn.close { right: 26px; }
+    .icon-btn.back { left: 26px; }
+
+    .menu-link {
+      width: min(300px, 82vw); height: 58px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06); backdrop-filter: blur(14px); color: #fff; font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: background .18s ease, transform .18s ease; margin: 7px 0;
+    }
+    .menu-link:hover { background: rgba(255,255,255,.12); transform: translateY(-1px); }
+    .menu .eyebrow { margin-bottom: 20px; }
+
+    /* auth */
+    .auth-card { width: min(400px, 92vw); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px; padding: 36px 30px; backdrop-filter: blur(20px); text-align: center; }
+    .auth-card h2 { margin: 4px 0 0; font-size: clamp(28px, 4vw, 36px); letter-spacing: -.03em; font-weight: 760; }
+    .auth-sub { margin: 10px 0 24px; color: rgba(255,255,255,.55); font-size: 15px; }
+    .auth-field { margin-bottom: 11px; }
+    .auth-field input { width: 100%; height: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06); color: #fff; padding: 0 18px; outline: none; font-size: 15px; }
+    .auth-field input:focus { border-color: rgba(113,147,255,.6); }
+    .btn-primary { width: 100%; height: 52px; border: 0; border-radius: 14px; background: #fff; color: #05070b;
+      font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 6px; }
+    .btn-primary:hover { background: rgba(255,255,255,.9); }
+    .auth-divider { display: flex; align-items: center; gap: 14px; margin: 18px 0; color: rgba(255,255,255,.4); font-size: 12px; letter-spacing: .12em; }
+    .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
+    .btn-google { width: 100%; height: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.04); color: #fff; font-weight: 600; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-google:hover { background: rgba(255,255,255,.1); }
+    .btn-google svg { width: 18px; height: 18px; }
+    .auth-foot { margin-top: 20px; color: rgba(255,255,255,.55); font-size: 14px; }
+    .link-inline { background: none; border: 0; height: auto; padding: 0; color: #7193ff; font-weight: 600; cursor: pointer; font-size: 14px; }
+
+    /* features + pricing */
+    .sp-head { text-align: center; }
+    .sp-headline { margin: 14px 0 0; font-size: clamp(34px, 5.5vw, 58px); line-height: 1.02; letter-spacing: -.04em; font-weight: 760; text-wrap: balance; }
+    .sp-lede { margin: 20px auto 0; max-width: 620px; color: rgba(255,255,255,.6); font-size: clamp(16px, 2vw, 19px); line-height: 1.5; }
+    .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 48px; }
+    .feat-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 30px; backdrop-filter: blur(12px); }
+    .product-name { font-size: 12px; letter-spacing: .22em; color: #7193ff; font-weight: 600; }
+    .feat-card h3 { margin: 14px 0 10px; font-size: 22px; letter-spacing: -.02em; font-weight: 700; text-wrap: balance; }
+    .feat-card p { margin: 0; color: rgba(255,255,255,.62); font-size: 15px; line-height: 1.55; }
+    .feat-cta { margin-top: 54px; text-align: center; }
+    .feat-cta h3 { font-size: clamp(24px, 3.5vw, 34px); letter-spacing: -.03em; font-weight: 760; margin: 0 0 22px; }
+    .feat-cta .btn-primary { width: auto; padding: 0 34px; }
+
+    .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 48px; align-items: stretch; }
+    .price-card { position: relative; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 22px; padding: 32px 26px; backdrop-filter: blur(12px); display: flex; flex-direction: column; }
+    .price-card.featured { border-color: rgba(113,147,255,.55); background: rgba(113,147,255,.07); }
+    .price-badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: #7193ff; color: #05070b;
+      font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; }
+    .price-name { font-size: 18px; font-weight: 700; }
+    .price-tag { margin: 4px 0 0; color: rgba(255,255,255,.55); font-size: 13.5px; }
+    .price-amount { margin: 18px 0 4px; font-size: 44px; font-weight: 760; letter-spacing: -.03em; }
+    .price-amount span { font-size: 15px; font-weight: 500; color: rgba(255,255,255,.5); }
+    .price-list { list-style: none; padding: 18px 0; margin: 0; flex: 1; }
+    .price-list li { position: relative; padding: 8px 0 8px 22px; color: rgba(255,255,255,.72); font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .price-list li::before { content: "✓"; position: absolute; left: 0; top: 9px; color: #7193ff; font-size: 12px; }
+    .btn-outline { width: 100%; height: 50px; border-radius: 14px; border: 1px solid rgba(255,255,255,.22);
+      background: transparent; color: #fff; font-weight: 600; font-size: 15px; cursor: pointer; transition: background .18s ease; }
+    .btn-outline:hover { background: rgba(255,255,255,.08); }
+    .price-card .btn-primary, .price-card .btn-outline { margin-top: 14px; }
+    .price-foot { text-align: center; margin-top: 30px; color: rgba(255,255,255,.42); font-size: 13px; }
+
+    @media (max-width: 820px) {
+      .feat-grid { grid-template-columns: 1fr; }
+      .price-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    }
+
+    /* ===== opening cover ===== */
+    .cover {
+      position: fixed; inset: 0; z-index: 25;
+      display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(41,121,255,.18), transparent 38%),
+        radial-gradient(circle at 72% 20%, rgba(255,154,60,.07), transparent 26%),
+        linear-gradient(180deg, #05070b 0%, #080b12 60%, #030407 100%);
+    }
+    .cover-logo { position: absolute; top: 24px; left: 28px; display: flex; align-items: center; gap: 10px; }
+    .cover-logo svg { width: 28px; height: 28px; }
+    .cover-logo span { font-size: 12.5px; font-weight: 700; letter-spacing: .16em; color: rgba(255,255,255,.92); }
+    .cover canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+    .cover-veil { position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(5,7,11,.62), transparent 70%); }
+    .cover-center { position: relative; z-index: 1; }
+    .cover-logo, .cover-scroll { z-index: 1; }
+    .cover-name {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+      font-size: clamp(40px, 9vw, 104px); font-weight: 700; letter-spacing: -.01em; line-height: .95;
+      white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-height: 1.1em;
+    }
+    .caret { display: inline-block; width: 4px; height: .8em; margin-left: .1em; background: #7193ff;
+      box-shadow: 0 0 10px rgba(113,147,255,.9); animation: blink 1.06s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .reveal-el { opacity: 0; transition: opacity .55s ease; }
+    .reveal-el.show { opacity: 1; }
+    .cover-scroll-arrow { color: #7193ff; filter: drop-shadow(0 0 8px rgba(113,147,255,.85)); animation: bounce 1.5s ease-in-out infinite; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(9px); } }
+    .brand { position: fixed; top: 24px; left: 28px; z-index: 30; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+    .brand svg { width: 26px; height: 26px; }
+    .brand-name { font-size: 13px; font-weight: 700; letter-spacing: .16em; color: rgba(255,255,255,.92); }
+    .cover-tag { margin: 22px 0 0; color: rgba(255,255,255,.6); font-size: clamp(16px, 2.2vw, 22px); }
+    .cover-access {
+      margin-top: 40px; height: 56px; width: auto; padding: 0 44px; border-radius: 999px; border: 0;
+      background: #fff; color: #05070b; font-weight: 700; font-size: 16px; cursor: pointer;
+      transition: transform .15s ease, background .2s ease;
+    }
+    .cover-access:hover { background: rgba(255,255,255,.9); transform: translateY(-1px); }
+    .cover-scroll {
+      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      color: rgba(255,255,255,.8); font-size: 12.5px; letter-spacing: .26em; text-transform: uppercase; font-weight: 600;
+    }
+
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <canvas id="map"></canvas>
+    <div class="noise"></div>
+
+    <!-- OPENING COVER (placeholder brand — swap name + logo later) -->
+    <section class="cover" id="cover">
+      <canvas id="blueprint"></canvas>
+      <div class="cover-veil"></div>
+      <div class="cover-center">
+        <div class="cover-name"><span id="typeTarget"></span><span class="caret"></span></div>
+        <p class="cover-tag reveal-el">Every market. One blueprint.</p>
+        <button class="cover-access reveal-el" data-go="menu">Access</button>
+      </div>
+      <div class="cover-scroll reveal-el">
+        <span class="cover-scroll-label">Scroll to explore</span>
+        <span class="cover-scroll-arrow" aria-hidden="true">
+          <svg width="28" height="30" viewBox="0 0 28 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 4l11 10L25 4"/>
+            <path d="M3 15l11 10L25 15" opacity="0.5"/>
+          </svg>
+        </span>
+      </div>
+    </section>
+
+    <section class="copy">
+      <p class="eyebrow" id="eyebrow">READ EVERY MARKET</p>
+      <h1 id="headline"><span>Every market.</span><span class="line2">One board.</span></h1>
+      <p class="sub" id="subcopy">Emerging prediction markets like Kalshi and Polymarket, alongside traditional sportsbooks — read together, in real time. The whole board, not one book's opinion.</p>
+    </section>
+
+    <section class="finale" id="finale">
+      <p class="eyebrow">EARLY ACCESS</p>
+      <h2>Get on the board.</h2>
+      <p class="sub">Log in, explore the features, or find the plan that fits.</p>
+      <div class="cta visible">
+        <button data-go="menu">Access</button>
+      </div>
+    </section>
+
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="hint" id="hint">SCROLL</div>
+
+    <button class="access-btn" id="accessBtn">Access</button>
+
+    <div class="brand" id="brand">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path stroke="rgba(130,180,255,.55)" stroke-width="1.2" d="M16 16L6 9M16 16L26 8M16 16L25 25M16 16L7 24"/>
+        <circle cx="16" cy="16" r="4" fill="#7193ff"/>
+        <circle cx="6" cy="9" r="2.2" fill="#9ab4ff"/>
+        <circle cx="26" cy="8" r="2.2" fill="#9ab4ff"/>
+        <circle cx="25" cy="25" r="2.2" fill="#9ab4ff"/>
+        <circle cx="7" cy="24" r="2.2" fill="#9ab4ff"/>
+      </svg>
+      <span class="brand-name" id="brandName">BLUPRNT</span>
+    </div>
+    <!-- animated mind-map backdrop shared by all sub-pages (no labels) -->
+    <div class="overlay-bg" id="overlayBg">
+      <canvas id="ambient"></canvas>
+      <div class="overlay-veil"></div>
+    </div>
+
+    <!-- ACCESS MENU -->
+    <nav class="subpage menu" id="menu">
+      <button class="icon-btn close" data-close aria-label="Close">×</button>
+      <div class="subpage-inner center">
+        <p class="eyebrow">ACCESS</p>
+        <button class="menu-link" data-go="login">Member Login</button>
+        <button class="menu-link" data-go="features">Features</button>
+        <button class="menu-link" data-go="pricing">Pricing</button>
+      </div>
+    </nav>
+
+    <!-- LOGIN / SIGN UP -->
+    <section class="subpage" id="login">
+      <button class="icon-btn back" data-back aria-label="Back">←</button>
+      <button class="icon-btn close" data-close aria-label="Close">×</button>
+      <div class="subpage-inner center">
+        <div class="auth-card">
+          <p class="eyebrow" id="authEyebrow">MEMBER LOGIN</p>
+          <h2 id="authTitle">Welcome back.</h2>
+          <p class="auth-sub" id="authSub">Sign in to your edge.</p>
+          <div class="auth-field" id="nameField" style="display:none"><input type="text" placeholder="Full name" /></div>
+          <div class="auth-field"><input type="email" placeholder="Email address" /></div>
+          <div class="auth-field"><input type="password" placeholder="Password" /></div>
+          <button class="btn-primary" id="authSubmit">Log in</button>
+          <div class="auth-divider"><span>or</span></div>
+          <button class="btn-google">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35 24 35c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.3-.1-2.5-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 5.1 29.6 3 24 3 16.3 3 9.7 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 10-2 13.6-5.2l-6.3-5.2C29.2 36.3 26.7 37 24 37c-5.3 0-9.7-2.6-11.3-7l-6.5 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.6l6.3 5.2C41.4 36.6 45 31 45 24c0-1.3-.1-2.5-.4-3.5z"/></svg>
+            Continue with Google
+          </button>
+          <p class="auth-foot"><span id="authFootText">New here?</span> <button class="link-inline" id="authToggle">Create an account</button></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="subpage scroll" id="features">
+      <button class="icon-btn back" data-back aria-label="Back">←</button>
+      <button class="icon-btn close" data-close aria-label="Close">×</button>
+      <div class="subpage-inner">
+        <div class="sp-head">
+          <p class="eyebrow">WHY IT WORKS</p>
+          <h2 class="sp-headline">Stop betting blind.<br />Start reading the whole market.</h2>
+          <p class="sp-lede">Everyone else is staring at one screen. You'll be reading all of them at once — emerging prediction markets and traditional sportsbooks, side by side — and catching the moments the rest of the market hasn't priced in yet.</p>
+        </div>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="product-name">THE BOARD</div>
+            <h3>See the price everyone else is missing.</h3>
+            <p>Kalshi, Polymarket, and the sportsbooks lined up on one board. The instant one market lags the others, the gap is right in front of you — and we flag the fakes, so you chase real value instead of bad data dressed up as an edge.</p>
+          </div>
+          <div class="feat-card">
+            <div class="product-name">WAVE</div>
+            <h3>Feel the money move before the line does.</h3>
+            <p>Big bets leave a wake. WAVE tracks outsized action and line movement as it happens and tells you whether it's real steam or just noise — so you can get your number before it moves against you.</p>
+          </div>
+          <div class="feat-card">
+            <div class="product-name">TAIL</div>
+            <h3>Ride with the proven winners.</h3>
+            <p>We score the most profitable wallets on Polymarket and show you exactly where they're putting their money — like sitting behind the sharpest players in the room and seeing their hand. When real winners move, you'll know first.</p>
+          </div>
+          <div class="feat-card">
+            <div class="product-name">TRUELINE</div>
+            <h3>Our number on every game.</h3>
+            <p>TrueLine weighs everything that actually moves a result into one honest line — your benchmark for what a game is really worth. Measure any market against it, and when you'd rather have the call made for you, TrueLine makes it.</p>
+          </div>
+        </div>
+        <div class="feat-cta">
+          <h3>The edge was always there. Now you can see it.</h3>
+          <button class="btn-primary" data-go="pricing">View plans</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="subpage scroll" id="pricing">
+      <button class="icon-btn back" data-back aria-label="Back">←</button>
+      <button class="icon-btn close" data-close aria-label="Close">×</button>
+      <div class="subpage-inner">
+        <div class="sp-head">
+          <p class="eyebrow">PRICING</p>
+          <h2 class="sp-headline">Pick how much edge you want.</h2>
+          <p class="sp-lede">Start free. Step up when you want the whole board — and step up again when you want our take, not just the market's.</p>
+        </div>
+        <div class="price-grid">
+          <div class="price-card">
+            <div class="price-name">Free</div>
+            <p class="price-tag">A taste of the board.</p>
+            <div class="price-amount">$0<span>/mo</span></div>
+            <ul class="price-list">
+              <li>Tonight's top edges, limited</li>
+              <li>One market comparison at a time</li>
+              <li>Delayed updates</li>
+            </ul>
+            <button class="btn-outline" data-go="login">Start free</button>
+          </div>
+          <div class="price-card featured">
+            <div class="price-badge">Most popular</div>
+            <div class="price-name">Basic</div>
+            <p class="price-tag">Everything you need to decide.</p>
+            <div class="price-amount">$29<span>/mo</span></div>
+            <ul class="price-list">
+              <li>THE BOARD — full cross-market board, live</li>
+              <li>WAVE — real-time movement &amp; steam</li>
+              <li>TAIL — smart-money wallet tracking</li>
+              <li>Both sides, every market, no limits</li>
+            </ul>
+            <button class="btn-primary" data-go="login">Choose Basic</button>
+          </div>
+          <div class="price-card">
+            <div class="price-name">Advanced</div>
+            <p class="price-tag">Plus our take.</p>
+            <div class="price-amount">$79<span>/mo</span></div>
+            <ul class="price-list">
+              <li>Everything in Basic</li>
+              <li>TrueLine — our fair line on every game</li>
+              <li>Our picks, with a transparent record</li>
+              <li>TrueLine overlaid right on the board</li>
+            </ul>
+            <button class="btn-outline" data-go="login">Go Advanced</button>
+          </div>
+        </div>
+        <p class="price-foot">Early-access pricing — founding members lock in these rates at launch.</p>
+      </div>
+    </section>
+  </main>
+
+<script>
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+const headline = document.getElementById('headline');
+const eyebrow = document.getElementById('eyebrow');
+const subcopy = document.getElementById('subcopy');
+const finale = document.getElementById('finale');
+const copyEl = document.querySelector('.copy');
+const accessBtn = document.getElementById('accessBtn');
+const menu = document.getElementById('menu');
+const bar = document.getElementById('bar');
+const hint = document.getElementById('hint');
+const cover = document.getElementById('cover');
+const brandName = document.getElementById('brandName');
+const COVER_END = 0.08;
+let coverAmt = 1;
+
+// ---- opening cover: typewriter brand reveal ----
+(function () {
+  const BRAND = 'BLUPRNT';
+  const typeTarget = document.getElementById('typeTarget');
+  let ti = 0;
+  function step() {
+    typeTarget.textContent = BRAND.slice(0, ti);
+    if (ti < BRAND.length) { ti++; setTimeout(step, 200); }
+    else { setTimeout(() => document.querySelectorAll('.cover .reveal-el').forEach(el => el.classList.add('show')), 180); }
+  }
+  setTimeout(step, 280);
+})();
+
+// ---- opening cover: animated court blueprint (TRON-style runners) ----
+const bp = document.getElementById('blueprint');
+const bpctx = bp.getContext('2d');
+let bpOff, bpRunners = [];
+function buildBlueprint() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  bp.width = Math.floor(innerWidth * dpr); bp.height = Math.floor(innerHeight * dpr);
+  bp.style.width = innerWidth + 'px'; bp.style.height = innerHeight + 'px';
+  bpctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const D = Math.PI / 180;
+  const circle = (cx, cy, r, seg = 64) => { const a = []; for (let i = 0; i <= seg; i++) { const t = i / seg * Math.PI * 2; a.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r]); } return a; };
+  const arc = (cx, cy, r, a0, a1, seg = 48) => { const a = []; for (let i = 0; i <= seg; i++) { const t = a0 + (a1 - a0) * i / seg; a.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r]); } return a; };
+  const roundRect = (L, W, r) => {
+    const p = []; const cn = (cx, cy, a0, a1) => { for (let i = 0; i <= 10; i++) { const t = a0 + (a1 - a0) * i / 10; p.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r]); } };
+    p.push([r, 0], [L - r, 0]); cn(L - r, r, -Math.PI / 2, 0);
+    p.push([L, W - r]); cn(L - r, W - r, 0, Math.PI / 2);
+    p.push([r, W]); cn(r, W - r, Math.PI / 2, Math.PI);
+    p.push([0, r]); cn(r, r, Math.PI, Math.PI * 1.5);
+    p.push([r, 0]); return p;
+  };
+
+  // === basketball court (anchor — centered, fills the dominant axis) ===
+  const scale = Math.min(innerWidth * 0.96 / 50, innerHeight * 0.92 / 94);
+  const ch = 94 * scale, cwBB = 50 * scale;
+  const oxBB = (innerWidth - cwBB) / 2;
+  const topY = innerHeight / 2 - ch / 2;
+  const Tbb = (x, y) => ({ x: oxBB + y * scale, y: topY + x * scale });
+
+  const tpL = [[0, 3], [14.2, 3]].concat(arc(5.25, 25, 23.75, -67.9 * D, 67.9 * D), [[14.2, 47], [0, 47]]);
+  const tpR = [[94, 3], [79.8, 3]].concat(arc(88.75, 25, 23.75, (180 + 67.9) * D, (180 - 67.9) * D), [[79.8, 47], [94, 47]]);
+  const bbShapes = [
+    [[0, 0], [94, 0], [94, 50], [0, 50], [0, 0]],
+    [[47, 0], [47, 50]],
+    circle(47, 25, 6),
+    [[0, 17], [19, 17], [19, 33], [0, 33]],
+    [[94, 17], [75, 17], [75, 33], [94, 33]],
+    circle(19, 25, 6), circle(75, 25, 6),
+    circle(5.25, 25, 0.75, 18), circle(88.75, 25, 0.75, 18),
+    [[4, 22], [4, 28]], [[90, 22], [90, 28]],
+    tpL, tpR,
+  ];
+  const bbScreen = bbShapes.map(s => s.map(p => Tbb(p[0], p[1])));
+
+  const gap = Math.max(38, innerWidth * 0.03);
+
+  // === football field (left of court) ===
+  const FL = 120, FW = 53.33, sFB = ch / FL, fbW = FW * sFB;
+  const oxFB = oxBB - gap - fbW;
+  const Tfb = (x, y) => ({ x: oxFB + y * sFB, y: topY + x * sFB });
+  const fbShapes = [[[0, 0], [FL, 0], [FL, FW], [0, FW], [0, 0]], [[10, 0], [10, FW]], [[110, 0], [110, FW]]];
+  for (let x = 20; x <= 100; x += 10) fbShapes.push([[x, 0], [x, FW]]);
+  const hA = FW * 0.36, hB = FW * 0.64;
+  for (let x = 15; x <= 105; x += 10) { fbShapes.push([[x, hA - 0.7], [x, hA + 0.7]], [[x, hB - 0.7], [x, hB + 0.7]]); }
+  fbShapes.push(circle(60, FW / 2, 6));
+  const fbScreen = fbShapes.map(s => s.map(p => Tfb(p[0], p[1])));
+
+  // === hockey rink (right of court) ===
+  const HL = 200, HW = 85, HR = 28, sHK = ch / HL, hkW = HW * sHK;
+  const oxHK = oxBB + cwBB + gap;
+  const Thk = (x, y) => ({ x: oxHK + y * sHK, y: topY + x * sHK });
+  const hkShapes = [
+    roundRect(HL, HW, HR),
+    [[11, 0], [11, HW]], [[189, 0], [189, HW]],
+    [[75, 0], [75, HW]], [[125, 0], [125, HW]], [[100, 0], [100, HW]],
+    circle(100, HW / 2, 15),
+    circle(31, 20.5, 15), circle(31, 64.5, 15), circle(169, 20.5, 15), circle(169, 64.5, 15),
+    [[11, 39.5], [7, 39.5], [7, 45.5], [11, 45.5]], [[189, 39.5], [193, 39.5], [193, 45.5], [189, 45.5]],
+  ];
+  const hkScreen = hkShapes.map(s => s.map(p => Thk(p[0], p[1])));
+
+  // === render static layer offscreen ===
+  bpOff = document.createElement('canvas');
+  bpOff.width = Math.floor(innerWidth * dpr); bpOff.height = Math.floor(innerHeight * dpr);
+  const o = bpOff.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+  o.clearRect(0, 0, innerWidth, innerHeight);
+  o.strokeStyle = 'rgba(120,170,255,.05)'; o.lineWidth = 1;
+  for (let x = 0; x < innerWidth; x += 38) { o.beginPath(); o.moveTo(x, 0); o.lineTo(x, innerHeight); o.stroke(); }
+  for (let y = 0; y < innerHeight; y += 38) { o.beginPath(); o.moveTo(0, y); o.lineTo(innerWidth, y); o.stroke(); }
+  o.lineJoin = 'round'; o.shadowColor = 'rgba(113,147,255,.5)';
+  const drawSet = (set, alpha, lw, glow) => {
+    o.strokeStyle = `rgba(125,170,255,${alpha})`; o.lineWidth = lw; o.shadowBlur = glow;
+    set.forEach(poly => { o.beginPath(); poly.forEach((p, i) => i ? o.lineTo(p.x, p.y) : o.moveTo(p.x, p.y)); o.stroke(); });
+  };
+  drawSet(fbScreen, .20, 1.1, 4);
+  drawSet(hkScreen, .20, 1.1, 4);
+  drawSet(bbScreen, .34, 1.4, 6);
+  o.shadowBlur = 0;
+
+  // === light runners (TRON) ===
+  const mk = poly => { const cum = [0]; let tot = 0; for (let i = 1; i < poly.length; i++) { tot += Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y); cum.push(tot); } return { poly, cum, total: tot }; };
+  const bbBound = mk(bbScreen[0]), bbCtr = mk(bbScreen[2]);
+  const fbBound = mk(fbScreen[0]);
+  const hkBound = mk(hkScreen[0]), hkCtr = mk(hkScreen[6]);
+  bpRunners = [
+    { track: bbBound, lapMs: 14000, dir: 1,  offset: 0,                  col: [150, 220, 255], trail: .12 },
+    { track: bbBound, lapMs: 19000, dir: -1, offset: bbBound.total * .5, col: [120, 150, 255], trail: .09 },
+    { track: bbCtr,   lapMs: 7000,  dir: 1,  offset: 0,                  col: [150, 220, 255], trail: .45 },
+    { track: fbBound, lapMs: 16000, dir: 1,  offset: 0,                  col: [150, 220, 255], trail: .11 },
+    { track: hkBound, lapMs: 17000, dir: -1, offset: 0,                  col: [150, 220, 255], trail: .11 },
+    { track: hkCtr,   lapMs: 7500,  dir: 1,  offset: 0,                  col: [120, 150, 255], trail: .45 },
+  ];
+}
+function bpPtAt(track, d) {
+  const total = track.total, poly = track.poly, cum = track.cum;
+  d = ((d % total) + total) % total;
+  for (let i = 0; i < poly.length - 1; i++) {
+    if (d <= cum[i + 1]) {
+      const segLen = cum[i + 1] - cum[i];
+      const t = segLen > 0 ? (d - cum[i]) / segLen : 0;
+      return { x: lerp(poly[i].x, poly[i + 1].x, t), y: lerp(poly[i].y, poly[i + 1].y, t) };
+    }
+  }
+  return poly[poly.length - 1];
+}
+function bpRunner(track, head, col, trailLen) {
+  bpctx.lineCap = 'round';
+  const steps = 22;
+  for (let s = 0; s < steps; s++) {
+    const p0 = bpPtAt(track, head - trailLen * s / steps);
+    const p1 = bpPtAt(track, head - trailLen * (s + 1) / steps);
+    const a = 1 - s / steps;
+    bpctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${(a * 0.85).toFixed(3)})`;
+    bpctx.lineWidth = 2.4 * a + 0.5;
+    bpctx.beginPath(); bpctx.moveTo(p0.x, p0.y); bpctx.lineTo(p1.x, p1.y); bpctx.stroke();
+  }
+  const h = bpPtAt(track, head);
+  bpctx.shadowBlur = 14; bpctx.shadowColor = `rgba(${col[0]},${col[1]},${col[2]},1)`;
+  bpctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},1)`;
+  bpctx.beginPath(); bpctx.arc(h.x, h.y, 2.8, 0, Math.PI * 2); bpctx.fill();
+  bpctx.shadowBlur = 0;
+}
+function bpDraw(time) {
+  requestAnimationFrame(bpDraw);
+  if (coverAmt < .02) return;
+  bpctx.clearRect(0, 0, innerWidth, innerHeight);
+  bpctx.drawImage(bpOff, 0, 0, innerWidth, innerHeight);
+  bpRunners.forEach(r => {
+    const head = (time / r.lapMs) * r.track.total * r.dir + r.offset;
+    bpRunner(r.track, head, r.col, r.trail * r.track.total);
+  });
+}
+buildBlueprint();
+addEventListener('resize', buildBlueprint);
+requestAnimationFrame(bpDraw);
+
+let W, H, DPR;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = canvas.width = innerWidth * DPR;
+  H = canvas.height = innerHeight * DPR;
+  canvas.style.width = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();
+addEventListener('resize', resize);
+
+const labels = [
+  'Kalshi Prices','Polymarket Flow','Sportsbook Lines','Line Movement','Sharp Action','Smart Money','Implied Odds','Player Props','Matchup Data','Injuries & News','Recent Form','Market Disagreement'
+];
+
+const nodes = [];
+const total = 145;
+for (let i = 0; i < total; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const r = Math.pow(Math.random(), .62);
+  nodes.push({
+    id: i,
+    a,
+    r,
+    size: i === 0 ? 9 : 1.5 + Math.random() * 3.2,
+    speed: .15 + Math.random() * .45,
+    label: i < labels.length ? labels[i] : '',
+    cluster: i % 6,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function lerp(a,b,t){ return a + (b-a)*t; }
+function smooth(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+function segment(p,a,b){ return clamp((p-a)/(b-a),0,1); }
+
+function getProgress() {
+  const max = document.body.scrollHeight - innerHeight;
+  return max <= 0 ? 0 : clamp(scrollY / max, 0, 1);
+}
+
+function copyFor(p) {
+  const scenes = [
+    [.00, 'READ EVERY MARKET', '<span>Every market.</span><span class="line2">One board.</span>', 'Emerging prediction markets like Kalshi and Polymarket, alongside traditional sportsbooks — read together, in real time. The whole board, not one book\'s opinion.'],
+    [.16, 'EVERYTHING IS A SIGNAL', '<span>Every number</span><span class="line2">is a signal.</span>', 'Lines, movement, props, sharp money — every market is telling you something. We listen to all of it at once.'],
+    [.31, 'CONNECT THE DOTS', '<span>Signals become</span><span class="line2">context.</span>', 'Prices, line moves, smart money, and matchups cluster into the patterns that actually move a game.'],
+    [.47, 'SIGNAL, NOT NOISE', '<span>Separate signal</span><span class="line2">from noise.</span>', 'Most \'edges\' are just bad data in disguise. The weak ones fall away; the real ones rise.'],
+    [.63, 'THE READ', '<span>The noise clears.</span><span class="line2">The edge shows.</span>', 'Thousands of inputs compress into one clear picture of where the value really is.'],
+    [.79, 'YOUR EDGE, IN FOCUS', '<span>Know where</span><span class="line2">the edge is.</span>', 'Want the whole board, or just the call? Either way, the edge is finally easy to see.']
+  ];
+
+  let s = scenes[0];
+  for (const scene of scenes) if (p >= scene[0]) s = scene;
+
+  if (headline.dataset.text !== s[2]) {
+    headline.dataset.text = s[2];
+    headline.style.opacity = 0;
+    subcopy.style.opacity = 0;
+    eyebrow.style.opacity = 0;
+    setTimeout(() => {
+      eyebrow.textContent = s[1];
+      headline.innerHTML = s[2];
+      subcopy.textContent = s[3];
+      headline.style.opacity = 1;
+      subcopy.style.opacity = 1;
+      eyebrow.style.opacity = 1;
+    }, 170);
+  }
+
+  const finaleAmt = smooth(segment(p, .93, .99));
+  finale.style.opacity = finaleAmt;
+  finale.style.pointerEvents = finaleAmt > .5 ? 'auto' : 'none';
+  canvas.style.opacity = 1 - finaleAmt;
+  copyEl.style.opacity = 1 - finaleAmt;
+  hint.style.opacity = p > .08 ? 0 : 1;
+  bar.style.height = (p * 100) + '%';
+}
+
+headline.style.transition = subcopy.style.transition = eyebrow.style.transition = 'opacity .28s ease';
+
+// ---- sub-page navigation ----
+const overlayBg = document.getElementById('overlayBg');
+const subpages = {
+  menu,
+  login: document.getElementById('login'),
+  features: document.getElementById('features'),
+  pricing: document.getElementById('pricing')
+};
+function showOverlay(name) {
+  Object.values(subpages).forEach(el => el.classList.remove('open'));
+  if (name && subpages[name]) {
+    subpages[name].classList.add('open');
+    if (subpages[name].classList.contains('scroll')) subpages[name].scrollTop = 0;
+    overlayBg.classList.add('show');
+    document.body.classList.add('locked');
+  } else {
+    overlayBg.classList.remove('show');
+    document.body.classList.remove('locked');
+  }
+}
+accessBtn.addEventListener('click', () => showOverlay('menu'));
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showOverlay(b.dataset.go)));
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => showOverlay('menu')));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => showOverlay(null)));
+addEventListener('keydown', e => { if (e.key === 'Escape') showOverlay(null); });
+
+// ---- login / sign-up toggle ----
+const authEyebrow = document.getElementById('authEyebrow');
+const authTitle = document.getElementById('authTitle');
+const authSub = document.getElementById('authSub');
+const authSubmit = document.getElementById('authSubmit');
+const nameField = document.getElementById('nameField');
+const authFootText = document.getElementById('authFootText');
+const authToggle = document.getElementById('authToggle');
+let signupMode = false;
+authToggle.addEventListener('click', () => {
+  signupMode = !signupMode;
+  nameField.style.display = signupMode ? 'block' : 'none';
+  authEyebrow.textContent = signupMode ? 'CREATE ACCOUNT' : 'MEMBER LOGIN';
+  authTitle.textContent = signupMode ? 'Join the edge.' : 'Welcome back.';
+  authSub.textContent = signupMode ? 'Create your account in seconds.' : 'Sign in to your edge.';
+  authSubmit.textContent = signupMode ? 'Create account' : 'Log in';
+  authFootText.textContent = signupMode ? 'Already a member?' : 'New here?';
+  authToggle.textContent = signupMode ? 'Log in' : 'Create an account';
+});
+
+// ---- enter the product app (wiring only) ----
+const APP_URL = '/app';
+if (authSubmit) authSubmit.addEventListener('click', () => { location.href = APP_URL; });
+const googleBtn = document.querySelector('.btn-google');
+if (googleBtn) googleBtn.addEventListener('click', () => { location.href = APP_URL; });
+
+// ---- ambient mind-map backdrop (no labels) ----
+const amb = document.getElementById('ambient');
+const actx = amb.getContext('2d');
+function ambResize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  amb.width = innerWidth * dpr; amb.height = innerHeight * dpr;
+  amb.style.width = innerWidth + 'px'; amb.style.height = innerHeight + 'px';
+  actx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+ambResize(); addEventListener('resize', ambResize);
+const aNodes = [];
+for (let i = 0; i < 90; i++) aNodes.push({ a: Math.random()*Math.PI*2, r: Math.pow(Math.random(), .6), size: i===0?7:1.4+Math.random()*2.8, speed: .15+Math.random()*.5, phase: Math.random()*Math.PI*2 });
+function ambDraw(time) {
+  requestAnimationFrame(ambDraw);
+  if (!overlayBg.classList.contains('show')) return;
+  actx.clearRect(0, 0, innerWidth, innerHeight);
+  const cx = innerWidth*.5, cy = innerHeight*.5, maxR = Math.min(innerWidth, innerHeight)*.46;
+  const pts = aNodes.map(n => {
+    const x = cx + Math.cos(n.a + time*.00010*n.speed) * maxR * n.r;
+    const y = cy + Math.sin(n.a + time*.00013*n.speed) * maxR * n.r * .8;
+    const br = Math.sin(time*.002 + n.phase) * 3;
+    return { x: x + br, y: y + br*.7 };
+  });
+  actx.save(); actx.globalAlpha = .85;
+  for (let i = 1; i < aNodes.length; i++) {
+    const a = pts[i], b = pts[Math.floor(i/3)];
+    const d = Math.hypot(a.x-b.x, a.y-b.y);
+    const al = clamp(1 - d/520, .04, .28);
+    actx.strokeStyle = `rgba(130,180,255,${al})`; actx.lineWidth = .7;
+    actx.beginPath(); actx.moveTo(a.x, a.y); actx.lineTo(b.x, b.y); actx.stroke();
+    if (i % 4 === 0) {
+      const t = (time*.0004 + i*.04) % 1;
+      const px = lerp(a.x, b.x, t), py = lerp(a.y, b.y, t);
+      actx.fillStyle = `rgba(255,181,91,${.2 + .3*Math.sin(t*Math.PI)})`;
+      actx.beginPath(); actx.arc(px, py, 1.6, 0, Math.PI*2); actx.fill();
+    }
+  }
+  for (let i = 0; i < aNodes.length; i++) {
+    const n = aNodes[i], pt = pts[i];
+    actx.shadowBlur = i===0 ? 22 : 13;
+    actx.shadowColor = i===0 ? 'rgba(120,175,255,.8)' : 'rgba(120,175,255,.35)';
+    actx.fillStyle = i===0 ? 'rgba(230,244,255,.95)' : 'rgba(150,190,255,.7)';
+    actx.beginPath(); actx.arc(pt.x, pt.y, n.size, 0, Math.PI*2); actx.fill();
+  }
+  actx.restore();
+}
+requestAnimationFrame(ambDraw);
+
+function chartGeom() {
+  const mobile = innerWidth < 760;
+  const x0 = innerWidth * (mobile ? .12 : .50);
+  const y0 = innerHeight * (mobile ? .72 : .73);
+  const w = innerWidth * (mobile ? .76 : .38);
+  const h = innerHeight * (mobile ? .30 : .42);
+
+  return {
+    x0, y0, w, h,
+    points: [
+      [x0, y0 - h * .10],
+      [x0 + w * .22, y0 - h * .22],
+      [x0 + w * .42, y0 - h * .34],
+      [x0 + w * .62, y0 - h * .56],
+      [x0 + w * .82, y0 - h * .70],
+      [x0 + w, y0 - h * .78]
+    ]
+  };
+}
+
+function chartTarget(node) {
+  const g = chartGeom();
+  const pts = g.points;
+  const p = pts[node.id % pts.length];
+  const jitter = node.id < 18 ? 0 : 14;
+  return {
+    x: p[0] + Math.cos(node.phase) * jitter,
+    y: p[1] + Math.sin(node.phase) * jitter * .72
+  };
+}
+
+function position(node, p, time) {
+  const cx = innerWidth * (innerWidth < 760 ? .52 : .64);
+  const cy = innerHeight * (innerWidth < 760 ? .60 : .57);
+
+  const expandRaw = smooth(segment(p, .02, .24));
+  const expand = lerp(.82, 1, expandRaw);
+  const organize = smooth(segment(p, .34, .60));
+  const converge = smooth(segment(p, .60, .78));
+  const finalFade = smooth(segment(p, .80, .92));
+
+  const maxR = Math.min(innerWidth, innerHeight) * lerp(.05, .52, expand);
+  const clusterAngles = [-1.9,-1.1,-.25,.58,1.38,2.24];
+  const clusterR = Math.min(innerWidth, innerHeight) * .32;
+  const clusterX = cx + Math.cos(clusterAngles[node.cluster]) * clusterR;
+  const clusterY = cy + Math.sin(clusterAngles[node.cluster]) * clusterR * .78;
+
+  let x = cx + Math.cos(node.a + time * .00012 * node.speed) * maxR * node.r;
+  let y = cy + Math.sin(node.a + time * .00015 * node.speed) * maxR * node.r * .85;
+
+  const ox = clusterX + Math.cos(node.a*2.1) * maxR * .22 * node.r;
+  const oy = clusterY + Math.sin(node.a*1.7) * maxR * .18 * node.r;
+  x = lerp(x, ox, organize * .68);
+  y = lerp(y, oy, organize * .68);
+
+  const target = chartTarget(node);
+  x = lerp(x, target.x, converge);
+  y = lerp(y, target.y, converge);
+
+  const breathe = Math.sin(time * .002 + node.phase) * 3;
+  return { x: x + breathe*(1-finalFade), y: y + breathe*.7*(1-finalFade) };
+}
+
+function drawProbabilityChart(p) {
+  const appear = smooth(segment(p, .66, .82));
+  if (appear <= .01) return;
+
+  const g = chartGeom();
+  const { x0, y0, w, h, points } = g;
+
+  ctx.save();
+  ctx.globalAlpha = appear;
+
+  // grid and axes, standalone on the page, no card/container
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,.09)';
+  for (let i=0; i<=4; i++) {
+    const y = y0 - h * (i / 4);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x0 + w, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,.22)';
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x0 + w, y0);
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x0, y0 - h);
+  ctx.stroke();
+
+  // labels
+  ctx.font = '12px Inter, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,.42)';
+  ctx.textAlign = 'right';
+  ['90%','80%','70%','60%','50%'].forEach((label, i) => {
+    const y = y0 - h * (i / 4);
+    ctx.fillText(label, x0 - 14, y + 4);
+  });
+
+  ctx.textAlign = 'center';
+  const xLabels = ['RAW','CONTEXT','MODEL','PROJECTION'];
+  const xPositions = [x0, x0 + w*.32, x0 + w*.65, x0 + w];
+  xLabels.forEach((label, i) => {
+    ctx.fillText(label, xPositions[i], y0 + 34);
+  });
+
+  // probability range band
+  const band = smooth(segment(p, .74, .84));
+  ctx.globalAlpha = appear * band * .65;
+  ctx.fillStyle = 'rgba(113,147,255,.13)';
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1] + 38);
+  ctx.bezierCurveTo(points[1][0], points[1][1] + 42, points[2][0], points[2][1] + 36, points[3][0], points[3][1] + 24);
+  ctx.bezierCurveTo(points[4][0], points[4][1] + 22, points[5][0], points[5][1] + 18, points[5][0], points[5][1] + 54);
+  ctx.bezierCurveTo(points[4][0], points[4][1] + 80, points[2][0], points[2][1] + 76, points[0][0], points[0][1] + 72);
+  ctx.closePath();
+  ctx.fill();
+
+  // line reveal
+  const lineReveal = smooth(segment(p, .68, .82));
+  ctx.globalAlpha = appear;
+  ctx.strokeStyle = 'rgba(255,255,255,.26)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1] + 16);
+  ctx.bezierCurveTo(points[1][0], points[1][1] + 22, points[2][0], points[2][1] + 18, points[3][0], points[3][1] + 8);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0 - 6, y0 - h - 30, (w + 12) * lineReveal, h + 90);
+  ctx.clip();
+
+  ctx.strokeStyle = 'rgba(113,147,255,.98)';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = 'rgba(113,147,255,.9)';
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  ctx.bezierCurveTo(points[1][0], points[1][1], points[2][0], points[2][1], points[3][0], points[3][1]);
+  ctx.bezierCurveTo(points[4][0], points[4][1], points[5][0] - w*.10, points[5][1], points[5][0], points[5][1]);
+  ctx.stroke();
+  ctx.restore();
+
+  // points
+  ctx.shadowBlur = 14;
+  points.forEach((pt, i) => {
+    const ptAppear = smooth(segment(p, .70 + i*.018, .79 + i*.018));
+    ctx.globalAlpha = appear * ptAppear;
+    ctx.fillStyle = i === points.length - 1 ? 'rgba(113,147,255,1)' : 'rgba(255,255,255,.92)';
+    ctx.beginPath();
+    ctx.arc(pt[0], pt[1], i === points.length - 1 ? 8 : 4, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+function draw(time) {
+  const raw = getProgress();
+  coverAmt = 1 - smooth(segment(raw, 0, COVER_END));
+  cover.style.opacity = coverAmt;
+  cover.style.pointerEvents = coverAmt > .5 ? 'auto' : 'none';
+  brandName.style.opacity = 1 - coverAmt;
+  const p = segment(raw, COVER_END, 1);
+  copyFor(p);
+  const accessVis = (1 - coverAmt) * (1 - smooth(segment(p, .93, .99)));
+  accessBtn.style.opacity = accessVis;
+  accessBtn.style.pointerEvents = accessVis > .5 ? 'auto' : 'none';
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+
+  const pts = nodes.map(n => position(n, p, time));
+  const visible = Math.floor(lerp(118, total, smooth(segment(p, .02, .24))));
+  const collapse = smooth(segment(p, .64, .80));
+  const chartFinal = smooth(segment(p, .76, .88));
+
+  ctx.save();
+  ctx.globalAlpha = .92 * (1 - chartFinal * .82);
+
+  // connections
+  for (let i=1; i<visible; i++) {
+    const n = nodes[i];
+    const parent = nodes[Math.floor(i / 3)];
+    const a = pts[i], b = pts[parent.id];
+    const d = Math.hypot(a.x-b.x, a.y-b.y);
+    const alpha = clamp(1 - d / 520, .05, .34) * (1 - chartFinal*.7);
+    ctx.strokeStyle = `rgba(130, 180, 255, ${alpha})`;
+    ctx.lineWidth = .75;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(b.x,b.y);
+    ctx.stroke();
+
+    // signal pulses
+    if (i % 4 === 0 && p > .14 && p < .72) {
+      const t = (time*.00038 + i*.037) % 1;
+      const px = lerp(a.x,b.x,t), py = lerp(a.y,b.y,t);
+      ctx.fillStyle = `rgba(255, 181, 91, ${.25 + .35*Math.sin(t*Math.PI)})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.7, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // nodes
+  for (let i=0; i<visible; i++) {
+    const n = nodes[i], pt = pts[i];
+    const glow = i === 0 ? 1 : .45;
+    const s = n.size * lerp(1, .62, chartFinal);
+    ctx.shadowBlur = 22 * glow;
+    ctx.shadowColor = i === 0 ? 'rgba(120,175,255,.85)' : 'rgba(120,175,255,.38)';
+    ctx.fillStyle = i === 0 ? 'rgba(230,244,255,.96)' : 'rgba(150,190,255,.75)';
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, s, 0, Math.PI*2);
+    ctx.fill();
+
+    if (n.label && i < visible && p < .80) {
+      ctx.shadowBlur = 0;
+      ctx.font = '12px Inter, system-ui, sans-serif';
+      ctx.fillStyle = `rgba(255,255,255,${.18 + .48*(1-collapse)})`;
+      ctx.fillText(n.label, pt.x + 12, pt.y + 4);
+    }
+  }
+
+  ctx.restore();
+
+  // Native final, not a separate HTML overlay: the same canvas draws the chart.
+  drawProbabilityChart(p);
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
