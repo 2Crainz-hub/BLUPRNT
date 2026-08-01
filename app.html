@@ -662,6 +662,7 @@ const SB_ANON = 'sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';   // Supabase 
 const SLUG2KEY = { pinnacle:'pin', draftkings:'dk', fanduel:'fd', kalshi:'kalshi', polymarket:'poly' };
 const impliedCents = a => Math.round(100 / amDec(a));   // american -> exchange cents (implied %)
 const teamAbbr = name => (name||'').trim().split(/\s+/).pop().slice(0,3).toUpperCase();
+const fmtWhen = iso => new Date(iso).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short', timeZone:'America/New_York' });
 
 async function sbGet(path){
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers:{ apikey:SB_ANON, Authorization:`Bearer ${SB_ANON}` } });
@@ -685,7 +686,7 @@ async function loadLive(){
         g = { id:q.game_id, co:m.commence,
               away:{n:m.away_team, ab:teamAbbr(m.away_team)},
               home:{n:m.home_team, ab:teamAbbr(m.home_team)},
-              time:new Date(m.commence).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}), v:{} };
+              time:fmtWhen(m.commence), v:{} };
         live.set(q.game_id, g);
       }
       g.v[key] = isExch(key)
@@ -694,6 +695,7 @@ async function loadLive(){
     }
     const list = [...live.values()]
       .filter(g=>Object.keys(g.v).length>=2)                      // cross-venue games only
+      .filter(g=>new Date(g.co).getTime() >= Date.now() - 3*3600e3) // upcoming only (drop finished/long-underway)
       .sort((a,b)=>new Date(a.co)-new Date(b.co)).slice(0,24);
     if(list.length){
       games.length=0; list.forEach(g=>games.push(g));             // swap demo -> live, in place
