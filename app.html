@@ -359,6 +359,7 @@ function route(id){
   document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
   document.querySelectorAll('.railitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+id));
+  if(id==='tail' && !tailLoaded){ tailLoaded=true; loadTail(); }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -540,21 +541,55 @@ function drawWave(){
 //=================================================================
 //  VIEW 3 — TAIL (smart-money wallets)
 //=================================================================
-const wallets = [
-  { h:'rookie_szn',   a:'0x9f…a21', roi:38.4, win:61, pnl:24820, vol:412000, spark:[2,5,4,8,7,11,10,14,18,17,22,25], picks:[['Rangers ML','TEX @ HOU','50¢','$14.2k'],['Yankees ML','NYY @ BOS','58¢','$9.0k'],['Braves ML','ATL @ NYM','54¢','$6.4k']] },
-  { h:'chalk_eater',  a:'0x3c…7e', roi:27.1, win:67, pnl:19140, vol:610000, spark:[3,3,6,5,9,8,12,11,15,16,19,21], picks:[['Dodgers ML','LAD @ SD','64¢','$22.0k'],['Phillies ML','PHI @ MIA','62¢','$11.3k']] },
-  { h:'fade_material',a:'0x77…0b', roi:24.6, win:55, pnl:31200, vol:980000, spark:[1,4,3,7,9,8,13,12,17,19,21,26], picks:[['Astros ML','TEX @ HOU','HOU +110','$8.1k'],['Mets ML','ATL @ NYM','47¢','$5.5k']] },
-  { h:'closing_line', a:'0x12…ce', roi:21.0, win:64, pnl:15630, vol:540000, spark:[2,2,4,6,5,8,9,11,12,14,15,18], picks:[['Red Sox ML','NYY @ BOS','BOS +130','$7.7k'],['Mariners ML','SEA @ LAA','48¢','$4.2k']] },
-  { h:'unit_pilot',   a:'0xab…44', roi:18.7, win:59, pnl:12410, vol:330000, spark:[1,3,2,5,4,7,6,9,10,11,13,15], picks:[['Rangers ML','TEX @ HOU','50¢','$3.6k'],['Marlins ML','PHI @ MIA','42¢','$2.9k']] },
-  { h:'no_vig_nick',  a:'0xde…91', roi:16.2, win:62, pnl:9870,  vol:288000, spark:[2,2,3,5,6,7,8,8,10,12,12,14], picks:[['Angels ML','SEA @ LAA','53¢','$5.0k'],['Yankees ML','NYY @ BOS','57¢','$3.1k']] },
-];
-let tailSel=0;
+// ── live: top Polymarket sports traders + their current MLB positions (TAIL v1) ──
+const TAIL_LB = 'https://data-api.polymarket.com/v1/leaderboard?category=SPORTS&timePeriod=ALL&orderBy=PNL&limit=40';
+const tailPosUrl = w => `https://data-api.polymarket.com/positions?user=${w}&limit=100&sortBy=CURRENT&sortDirection=DESC`;
+const tailToday = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+const tSlugDate = s => { const m=String(s||'').match(/(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; };
+function tIsLiveMlb(p){
+  if(!p || typeof p.slug!=='string' || !p.slug.startsWith('mlb-')) return false;  // baseball only
+  if(p.redeemable) return false;                          // settled -> skip
+  if(!(p.curPrice>0 && p.curPrice<1)) return false;       // resolved markets sit at 0 or 1
+  const d=tSlugDate(p.slug); if(d && d<tailToday()) return false;   // game already past
+  return true;
+}
+let tailWallets=[], tailSel=0, tailStatus='loading', tailErr='', tailLoaded=false;
+
+async function loadTail(){
+  tailStatus='loading'; renderTail();
+  try{
+    const lb = await fetch(TAIL_LB).then(r=>{ if(!r.ok) throw new Error('leaderboard '+r.status); return r.json(); });
+    const top = (lb||[]).slice(0,40);
+    const res = await Promise.allSettled(top.map(t=>fetch(tailPosUrl(t.proxyWallet)).then(r=>r.ok?r.json():[])));
+    const out=[];
+    top.forEach((t,i)=>{
+      if(res[i].status!=='fulfilled') return;
+      const picks=(res[i].value||[]).filter(tIsLiveMlb).map(p=>({
+        side:p.outcome, game:p.title, price:Math.round((p.curPrice||0)*100), size:p.currentValue||0
+      })).sort((a,b)=>b.size-a.size);
+      if(picks.length) out.push({
+        name:t.userName || ('0x…'+t.proxyWallet.slice(-4)),
+        addr:t.proxyWallet.slice(0,6)+'…'+t.proxyWallet.slice(-4),
+        pnl:t.pnl||0, vol:t.vol||0, roi:t.vol>0?(t.pnl/t.vol*100):0, picks
+      });
+    });
+    out.sort((a,b)=>b.pnl-a.pnl);
+    tailWallets=out; tailSel=0; tailStatus=out.length?'ready':'empty';
+  }catch(e){ tailStatus='error'; tailErr=String(e && e.message || e); }
+  renderTail();
+}
+
 function renderTail(){
-  document.getElementById('view-tail').innerHTML = `
+  const view=document.getElementById('view-tail'); if(!view) return;
+  const shell=(body,meta)=>`<div class="panel"><div class="phead"><h3>Smart money · live MLB</h3>${meta?`<div class="meta">${meta}</div>`:''}</div><div style="padding:34px 22px;color:var(--mut);line-height:1.55">${body}</div></div>`;
+  if(tailStatus==='loading'){ view.innerHTML=shell('Scanning the top Polymarket sports traders for live baseball positions…'); return; }
+  if(tailStatus==='error'){ view.innerHTML=shell(`Couldn't reach Polymarket directly from the browser (<span class="mono">${tailErr}</span>). This is almost always a CORS block — the fix is a small proxy, which we can add next.`); return; }
+  if(tailStatus==='empty'){ view.innerHTML=shell('None of the top sports traders are holding a live MLB position right now. Baseball money on Polymarket is often light off-peak — worth another look closer to game time.','no live baseball action at the moment'); return; }
+  view.innerHTML = `
     <div class="grid2">
       <div class="panel" style="overflow:hidden">
-        <div class="phead"><h3>Top wallets · 30-day P/L</h3><div class="meta">ranked by realized ROI</div></div>
-        <table class="tail"><thead><tr><th>#</th><th>Wallet</th><th>ROI</th><th class="hide-sm">Win</th><th>30d P/L</th><th>Trend</th></tr></thead>
+        <div class="phead"><h3>Top sports traders · live MLB</h3><div class="meta">by all-time Polymarket sports profit</div></div>
+        <table class="tail"><thead><tr><th>#</th><th>Trader</th><th>Sports P/L</th><th class="hide-sm">ROI</th><th>MLB</th></tr></thead>
         <tbody id="walletRows"></tbody></table>
       </div>
       <div class="panel" style="overflow:hidden">
@@ -562,29 +597,27 @@ function renderTail(){
         <div class="poslist" id="tailPos"></div>
       </div>
     </div>
-    <div class="disc">Wallets are ranked on realized, vig-adjusted return over a rolling 30 days, not raw profit — volume and win-rate are shown so you can tell a grinder from a one-hit wallet. “Tail” mirrors their open position sized to your bankroll. Illustrative on-chain data.</div>`;
-  document.getElementById('walletRows').innerHTML = wallets.map((w,i)=>`
+    <div class="disc">Ranked by all-time profit across <b>all sports</b> on Polymarket — there's no baseball-only ranking, so these are proven sports traders, not necessarily baseball specialists. The positions shown are only their <b>current live MLB bets</b>. Past profit doesn't guarantee future results. Live on-chain data via Polymarket.</div>`;
+  document.getElementById('walletRows').innerHTML = tailWallets.map((w,i)=>`
     <tr data-wal="${i}" class="${i===tailSel?'sel':''}">
       <td class="rk">${i+1}</td>
-      <td><div class="wh">${w.h}</div><div class="ad mono">${w.a}</div></td>
-      <td class="pos">+${w.roi}%</td>
-      <td class="hide-sm">${w.win}%</td>
-      <td class="pos">+$${(w.pnl/1000).toFixed(1)}k</td>
-      <td>${spark(w.spark)}</td>
+      <td><div class="wh">${w.name}</div><div class="ad mono">${w.addr}</div></td>
+      <td class="pos">+$${(w.pnl/1000).toFixed(0)}k</td>
+      <td class="hide-sm ${w.roi>=0?'pos':''}">${w.roi>=0?'+':''}${w.roi.toFixed(1)}%</td>
+      <td>${w.picks.length}</td>
     </tr>`).join('');
   document.querySelectorAll('[data-wal]').forEach(el=>el.addEventListener('click',()=>{ tailSel=+el.dataset.wal; renderTail(); }));
-  const w=wallets[tailSel];
-  document.getElementById('tailWho').textContent=w.h;
-  document.getElementById('tailMeta').textContent=`${w.a} · ${w.win}% win · $${(w.vol/1000).toFixed(0)}k volume`;
-  document.getElementById('tailPos').innerHTML = `
-    <div style="padding:10px 18px 4px;font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Open positions</div>`+
+  const w=tailWallets[tailSel]; if(!w) return;
+  document.getElementById('tailWho').textContent=w.name;
+  document.getElementById('tailMeta').textContent=`${w.addr} · $${(w.vol/1e6).toFixed(1)}M volume · ${w.picks.length} live MLB bet${w.picks.length>1?'s':''}`;
+  document.getElementById('tailPos').innerHTML =
+    `<div style="padding:10px 18px 4px;font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Live MLB positions</div>`+
     w.picks.map(p=>`<div class="posrow">
-      <div class="s"><div class="n">${p[0]}</div><div class="d">${p[1]} · entry ${p[2]}</div></div>
-      <div class="amt">${p[3]}</div>
-      <button class="tailbtn">Tail</button>
+      <div class="s"><div class="n">${p.side}</div><div class="d">${p.game} · ${p.price}¢</div></div>
+      <div class="amt">$${(p.size/1000).toFixed(1)}k</div>
     </div>`).join('');
-  document.querySelectorAll('.tailbtn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();b.textContent='Tailing ✓';b.style.color='var(--val)';b.style.borderColor='rgba(74,222,128,.45)';}));
 }
+
 function spark(vals){
   const w=70,h=22,min=Math.min(...vals),max=Math.max(...vals),r=(max-min)||1;
   const p=vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*w).toFixed(1)+' '+(h-((v-min)/r)*h).toFixed(1)).join(' ');
