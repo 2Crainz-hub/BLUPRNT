@@ -36,7 +36,7 @@ const MIN_VENUES = 1;
 
 // Only keep games starting within this many hours (today + tomorrow), so the board is a
 // real daily slate instead of the six-week dump OddsPapi returns. Tunable via env.
-const WINDOW_HOURS = Number(process.env.MLB_WINDOW_HOURS || 30);
+const WINDOW_HOURS = Number(process.env.MLB_WINDOW_HOURS || 48);
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 const qs = (o: Record<string, string | number>) =>

@@ -49,6 +49,11 @@
   .navitem .nm{font-weight:700;font-size:14.5px;color:var(--txt)}
   .navitem .ds{font-size:11px;font-weight:500;color:var(--txt-3);margin-top:1px}
   .navitem .tag{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.05em;color:#0A0A0C;background:var(--coral);border-radius:6px;padding:3px 6px}
+  .navitem.soon{opacity:.72}
+  .tag.soon{background:var(--txt-3)}
+  .railitem.soon{opacity:.72;position:relative}
+  .soon-banner{background:rgba(232,197,90,.1);border:1px solid rgba(232,197,90,.35);color:#E8C55A;border-radius:12px;padding:13px 17px;font-size:13px;font-weight:600;margin-bottom:18px;line-height:1.5}
+  .rsoon{position:absolute;top:3px;right:8px;font-size:7px;font-weight:800;letter-spacing:.03em;color:var(--txt-3)}
   .side-foot{margin-top:auto;border-top:1px solid var(--bdr);padding-top:15px;display:flex;align-items:center;gap:11px}
   .side-foot .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--teal));flex-shrink:0;border:2px solid rgba(255,255,255,.14)}
   .side-foot .who{font-size:13.5px;font-weight:700;color:var(--txt)}
@@ -75,6 +80,10 @@
   .phead{display:flex;align-items:center;justify-content:space-between;padding:17px 21px;border-bottom:1px solid var(--bdr)}
   .phead h3{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-2)}
   .phead .meta{font-size:11.5px;font-weight:600;color:var(--txt-3);font-variant-numeric:tabular-nums}
+  .pright{display:flex;align-items:center;gap:12px}
+  .daytog{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid var(--bdr);border-radius:10px;padding:3px}
+  .daytog .dt{font-size:11.5px;font-weight:700;color:var(--txt-3);background:none;border:none;border-radius:7px;padding:6px 13px;cursor:pointer;transition:background .12s,color .12s}
+  .daytog .dt.on{background:var(--teal);color:#0A0A0C}
   .info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;border:1px solid var(--bdr-2);color:var(--txt-3);font-size:11px;font-weight:800;font-style:normal;cursor:help;position:relative;flex:0 0 auto}
   .info:hover{color:var(--txt);border-color:var(--txt-3)}
   .info:hover::after{content:attr(data-tip);position:absolute;top:26px;right:0;width:290px;background:#15161A;border:1px solid var(--bdr);border-radius:11px;padding:13px 15px;font-size:12px;font-weight:500;line-height:1.55;color:var(--txt-2);letter-spacing:0;text-transform:none;z-index:60;box-shadow:0 12px 34px rgba(0,0,0,.55);text-align:left;white-space:normal}
@@ -216,6 +225,8 @@
   .conv.strong{color:#0A0A0C;background:var(--teal)}
   .conv.play{color:var(--teal);border:1px solid rgba(52,217,192,.5)}
   .conv.lean{color:var(--txt-2);border:1px solid var(--bdr-2)}
+  .conv.pass{color:var(--txt-3);border:1px solid var(--bdr-2);opacity:.85}
+  .tl-note{font-size:12.5px;color:var(--txt-3);line-height:1.55;margin:-6px 0 20px;font-weight:500;max-width:760px}
   .pick .game{font-size:11.5px;color:var(--txt-3);font-weight:600}
   .pick .call{font-weight:800;font-size:21px;letter-spacing:-.02em;margin-top:11px;color:var(--txt)}
   .pick .call span{color:var(--teal)}
@@ -293,6 +304,7 @@
     <section class="view" id="view-wave"></section>
     <section class="view" id="view-tail"></section>
     <section class="view" id="view-trueline"></section>
+    <section class="view" id="view-alpha"></section>
   </main>
 </div>
 
@@ -357,6 +369,12 @@ function best(g, side, suspectV){
   }
   return b;
 }
+// TrueLine: sharp-weighted, power-de-vigged "true" probability — a different, sharper
+// number than the Board's flat median. Anchors on sharp sources; corrects fav-longshot bias.
+const SHARP_W = { pin:3.0, kalshi:2.0, poly:2.0, dk:0.5, fd:0.5, mgm:0.5, czr:0.5 };
+function devigPower(q1,q2){ let lo=0.3,hi=6; for(let i=0;i<44;i++){ const k=(lo+hi)/2; (Math.pow(q1,k)+Math.pow(q2,k)>1)?lo=k:hi=k; } const k=(lo+hi)/2; return [Math.pow(q1,k),Math.pow(q2,k)]; }
+function trueLine(g, suspectV){ let wsum=0,pAway=0; for(const v of VENUES){ if(!g.v[v]||suspectV.includes(v)) continue; const [ta]=devigPower(cost(v,g.v[v].away),cost(v,g.v[v].home)); const w=SHARP_W[v]||0.5; pAway+=w*ta; wsum+=w; } if(!wsum) return null; const away=pAway/wsum; return { away, home:1-away }; }
+function americanFromProb(p){ if(p<=0||p>=1) return ''; const dec=1/p; return dec>=2 ? '+'+Math.round((dec-1)*100) : '-'+Math.round(100/(dec-1)); }
 // list of locked, risk-free arbs (best away + best home cost < $1), suspect prices excluded
 function findArbs(){
   return games.map(g=>{
@@ -371,9 +389,11 @@ function findArbs(){
 //  NAV + ROUTER
 //=================================================================
 const PRODUCTS = [
+  { id:'alpha',    ico:'✦', nm:'Project Alpha', ds:'Our official plays', eyebrow:'PROJECT ALPHA',
+    title:'The plays we’re making.', sub:'Not data to interpret — our actual positions. When Alpha names a play, we’re saying bet it, and our record is on the line.' },
   { id:'board',    ico:'▦', nm:'The Board', ds:'Every market, side by side', eyebrow:'THE BOARD',
     title:'Every market, one board.', sub:'Kalshi, Polymarket and the books on one screen — with risk-free locks surfaced first and fake edges flagged before you chase them.' },
-  { id:'wave',     ico:'∿', nm:'Wave', ds:'Line movement & steam', eyebrow:'WAVE',
+  { id:'wave',     ico:'∿', nm:'Wave', ds:'Line movement & steam', eyebrow:'WAVE', soon:true,
     title:'Feel the money move.', sub:'Where sharp action is moving the market in real time — and whether it’s real steam or just noise.' },
   { id:'tail',     ico:'⊳', nm:'Tail', ds:'Smart-money wallets', eyebrow:'TAIL',
     title:'Ride with the winners.', sub:'The most profitable wallets on Polymarket, what they’re backing right now, and what it’s cost to fade them.' },
@@ -384,16 +404,17 @@ let current='board';
 
 function buildNav(){
   document.getElementById('nav').innerHTML = PRODUCTS.map(p=>`
-    <div class="navitem ${p.id===current?'on':''}" data-go="${p.id}">
+    <div class="navitem ${p.id===current?'on':''} ${p.soon?'soon':''}" data-go="${p.id}">
       <div class="ico">${p.ico}</div>
       <div><div class="nm">${p.nm}</div><div class="ds">${p.ds}</div></div>
-      ${p.id==='trueline'?'<div class="tag">ADV</div>':''}
+      ${p.soon?'<div class="tag soon">SOON</div>':(p.id==='trueline'?'<div class="tag">ADV</div>':'')}
     </div>`).join('');
   document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
 }
 function route(id){
-  current=id;
   const p=PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  current=id;
   document.getElementById('tEyebrow').textContent=p.eyebrow;
   document.getElementById('tTitle').textContent=p.title;
   document.getElementById('tSub').textContent=p.sub;
@@ -408,6 +429,9 @@ function route(id){
 //  VIEW 1 — THE BOARD (+ arbitrage module)
 //=================================================================
 let budget=200;
+let allLive=[], slateOpts=[], slateIdx=0;
+function slateToggleHTML(){ if(slateOpts.length<2) return ''; return `<div class="daytog">${slateOpts.map((o,i)=>`<button class="dt ${i===slateIdx?'on':''}" data-slate="${i}">${o.label}</button>`).join('')}</div>`; }
+function wireSlateToggle(){ document.querySelectorAll('[data-slate]').forEach(b=>b.addEventListener('click',()=>{ slateIdx=+b.dataset.slate; applySlate(); })); }
 function renderBoard(){
   const arbs=findArbs();
   const arbSection = !arbs.length ? '' : `
@@ -427,7 +451,7 @@ function renderBoard(){
     ${arbSection}
 
     <div class="panel">
-      <div class="phead"><h3>Tonight’s board · MLB moneyline</h3><span class="info" data-tip="This board doesn't pick winners. For each team it shows the best available price and which book has it — tap any game to compare all 7 books side by side. 'Fair' is the vig-free consensus price, so you can see whether even the best number is genuinely good value.">i</span></div>
+      <div class="phead"><h3>The board · MLB moneyline</h3><div class="pright">${slateToggleHTML()}<span class="info" data-tip="This board doesn't pick winners. For each team it shows the best available price and which book has it — tap any game to compare all 7 books side by side. 'Fair' is the vig-free consensus price, so you can see whether even the best number is genuinely good value.">i</span></div></div>
       <table class="board">
         <thead><tr>
           <th>Game</th><th>Away</th><th>Home</th><th></th>
@@ -551,6 +575,7 @@ const waveMoves = [
 let waveSel='tex-hou-h';
 function renderWave(){
   document.getElementById('view-wave').innerHTML = `
+    <div class="soon-banner">✦ WAVE is coming soon — this is a preview with sample data. Live line-movement and steam tracking isn't active yet.</div>
     <div class="grid2">
       <div class="panel" style="overflow:hidden">
         <div class="phead"><h3 id="wTitle"></h3><div class="meta" id="wMeta"></div></div>
@@ -724,48 +749,69 @@ function spark(vals){
 //=================================================================
 //  VIEW 4 — TRUELINE (model line + picks)
 //=================================================================
-const picks = [
-  { game:'TEX @ HOU', call:'Rangers', mkt:'ML', trueP:54, market:'50¢ · Polymarket', edge:'+5.4%', conf:.78, conv:'strong',
-    note:'Our line has Texas a slim favorite on starter edge and bullpen rest; the market still has this a coin flip. The cheapest Rangers price is on Polymarket, and it pairs into a clean lock with Houston +110.' },
-  { game:'NYY @ BOS', call:'Red Sox', mkt:'ML +130', trueP:45, market:'+130 · DraftKings', edge:'+4.0%', conf:.64, conv:'play',
-    note:'Boston’s true price sits around +118; +130 at the book is real value on the dog. Polymarket is even cheaper on the Yankees side, so there’s a lock here too — but the standalone Red Sox number is the better single bet.' },
-  { game:'PHI @ MIA', call:'Phillies', mkt:'ML', trueP:62, market:'-148 · FanDuel', edge:'+2.1%', conf:.6, conv:'play',
-    note:'Philadelphia grades a touch stronger than the books have them; FanDuel is the softest price on the favorite. No lock available — the Marlins side is fairly priced everywhere.' },
-  { game:'ATL @ NYM', call:'Mets', mkt:'ML', trueP:48, market:'47¢ · Polymarket', edge:'+1.6%', conf:.55, conv:'lean',
-    note:'Slight lean to the home dog at a fair-to-cheap exchange price. Thin edge — a small play, not a stand.' },
-  { game:'LAD @ SD', call:'Pass', mkt:'—', trueP:63, market:'Kalshi flagged', edge:'0.0%', conf:.3, conv:'lean',
-    note:'Kalshi is pricing the Dodgers ~16 points off the rest of the market — almost certainly a stale line, not an edge. We pass until it re-syncs rather than book a fake number.' },
-];
-function renderTrueline(){
-  document.getElementById('view-trueline').innerHTML = `
-    <div class="record">
-      <div class="c"><div class="l">Record · 30d</div><div class="v">214–176</div></div>
-      <div class="c"><div class="l">ROI</div><div class="v pos">+7.8%</div></div>
-      <div class="c"><div class="l">Closing-line value</div><div class="v pos">+2.6%</div></div>
-      <div class="c"><div class="l">Plays graded</div><div class="v">390</div></div>
-    </div>
-    <div class="picks">${picks.map(pickCard).join('')}</div>
-    <div class="disc">TrueLine is our vig-free model price for each game; the call is shown only where our number diverges enough from the best market price to clear our threshold. Conviction reflects edge size and confidence, not certainty. Closing-line value — how our entry compares to where the market closes — is the honest scoreboard, and we publish it whether it’s pretty or not. Illustrative model output, not betting advice.</div>`;
+function truelineCalls(){
+  return games.map(g=>{
+    const a=analyze(g);
+    const tl=trueLine(g,a.suspectV);
+    if(!tl) return null;
+    const ba=best(g,'away',a.suspectV), bh=best(g,'home',a.suspectV);
+    const edgeA=(tl.away/ba.cost-1)*100, edgeH=(tl.home/bh.cost-1)*100;
+    const pick = edgeA>=edgeH ? { team:g.away.ab, tp:tl.away, b:ba, edge:edgeA }
+                              : { team:g.home.ab, tp:tl.home, b:bh, edge:edgeH };
+    const conv = pick.edge>=3 ? 'play' : pick.edge>=1.5 ? 'lean' : 'pass';
+    return { g, a, tl, pick, conv };
+  }).filter(Boolean)
+    .sort((x,y)=> (y.conv==='pass'?-999:y.pick.edge) - (x.conv==='pass'?-999:x.pick.edge));
 }
-function pickCard(p){
-  const passed = p.call==='Pass';
+
+function renderTrueline(){
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const calls=truelineCalls();
+  const plays=calls.filter(c=>c.conv!=='pass').length;
+  document.getElementById('view-trueline').innerHTML = `
+
+    <div class="phead" style="border:0;padding:2px 2px 14px"><h3>Our calls</h3><div class="pright">${slateToggleHTML()}<div class="meta">${plays} play${plays===1?'':'s'} \u00b7 ${calls.length-plays} pass</div></div></div>
+    <div class="picks">${calls.map(pickCard).join('')}</div>
+    <div class="disc">TrueLine is our sharp-weighted, vig-free line \u2014 anchored on the sharpest sources (Pinnacle, Kalshi, Polymarket) and de-vigged with the power method to correct favorite\u2013longshot bias. A call is named only where the best market price beats our line past our threshold; otherwise we pass. It measures the market against the sharp money \u2014 it is not an independent prediction.</div>`;
+}
+
+function pickCard(c){
+  const pass=c.conv==='pass';
+  const strength=Math.min(100, Math.max(0, c.pick.edge)*20);
   return `<div class="pick">
     <div class="top">
-      <div class="game">${p.game}</div>
-      <div class="conv ${p.conv}">${passed?'PASS':p.conv.toUpperCase()}</div>
+      <div class="game">${c.g.away.ab} @ ${c.g.home.ab} \u00b7 ${c.g.time}</div>
+      <div class="conv ${c.conv}">${pass?'PASS':c.conv.toUpperCase()}</div>
     </div>
-    <div class="call">${passed?'<span style="color:var(--mut-2)">No play</span>':`<span>${p.call}</span> ${p.mkt}`}</div>
+    <div class="call">${pass?'<span style="color:var(--mut-2)">No play \u2014 market efficient</span>':`<span>${c.pick.team}</span> ${pxLabel(c.pick.b.v,c.pick.b.price)} \u00b7 ${VEN[c.pick.b.v].label}`}</div>
     <div class="lines">
-      <div class="x"><div class="l">TrueLine</div><div class="v">${p.trueP}%</div></div>
-      <div class="x"><div class="l">Market</div><div class="v">${p.market}</div></div>
-      <div class="x"><div class="l">Edge</div><div class="v ${passed?'':'edge'}">${p.edge}</div></div>
+      <div class="x"><div class="l">TrueLine</div><div class="v">${(c.pick.tp*100).toFixed(0)}%</div></div>
+      <div class="x"><div class="l">Best price</div><div class="v">${pxLabel(c.pick.b.v,c.pick.b.price)}</div></div>
+      <div class="x"><div class="l">Edge</div><div class="v ${pass?'':'edge'}">${c.pick.edge>0?'+':''}${c.pick.edge.toFixed(1)}%</div></div>
     </div>
     <div class="conf">
-      <div class="lab"><span>Confidence</span><span>${Math.round(p.conf*100)}%</span></div>
-      <div class="bar"><i style="width:${p.conf*100}%"></i></div>
+      <div class="lab"><span>Edge strength</span><span>${Math.round(strength)}%</span></div>
+      <div class="bar"><i style="width:${strength}%"></i></div>
     </div>
-    <div class="note">${p.note}</div>
+    <div class="note">${pass
+      ? `TrueLine has ${c.g.away.ab} ${(c.tl.away*100).toFixed(0)}% / ${c.g.home.ab} ${(c.tl.home*100).toFixed(0)}% \u2014 no side's best price clears our edge threshold, so we pass.`
+      : `Our line makes ${c.pick.team} ${(c.pick.tp*100).toFixed(0)}% (fair price ${americanFromProb(c.pick.tp)}). Best available is ${pxLabel(c.pick.b.v,c.pick.b.price)} at ${VEN[c.pick.b.v].label} \u2014 a +${c.pick.edge.toFixed(1)}% edge over our line.`}</div>
   </div>`;
+}
+
+function renderAlpha(){
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('view-alpha').innerHTML=`
+    <div class="record">
+      <div class="c"><div class="l">CLV</div><div class="v" style="color:var(--txt-3)">—</div></div>
+      <div class="c"><div class="l">ROI</div><div class="v" style="color:var(--txt-3)">—</div></div>
+      <div class="c"><div class="l">Plays</div><div class="v">0</div></div>
+      <div class="c"><div class="l">Tracking since</div><div class="v" style="font-size:15px">${today}</div></div>
+    </div>
+    <div class="tl-note">This scoreboard tracks Alpha’s official plays — graded on closing-line value and ROI, win or lose. It starts empty and earns every number.</div>
+    <div class="panel"><div class="phead"><h3>Today’s plays</h3></div>
+      <div style="padding:44px 24px;text-align:center;color:var(--mut);line-height:1.6">Project Alpha’s selection logic is being finalized.<br>This is where our official plays for the day will appear — the bets we’re actually making, on the record.</div>
+    </div>`;
 }
 
 //=================================================================
@@ -773,13 +819,13 @@ function pickCard(p){
 //=================================================================
 buildNav();
 buildRail();
-renderBoard(); renderWave(); renderTail(); renderTrueline();
+renderBoard(); renderWave(); renderTail(); renderTrueline(); renderAlpha();
 route('board');
 
 function buildRail(){
   const rail=document.createElement('nav');
   rail.className='mrail';
-  rail.innerHTML=PRODUCTS.map(p=>`<button class="railitem ${p.id===current?'on':''}" data-go="${p.id}"><span class="rico">${p.ico}</span><span class="rlbl">${p.nm.replace('The ','')}</span></button>`).join('');
+  rail.innerHTML=PRODUCTS.map(p=>`<button class="railitem ${p.id===current?'on':''} ${p.soon?'soon':''}" data-go="${p.id}"><span class="rico">${p.ico}</span><span class="rlbl">${p.nm.replace('The ','')}</span>${p.soon?'<span class="rsoon">SOON</span>':''}</button>`).join('');
   document.body.appendChild(rail);
   rail.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
 }
@@ -825,20 +871,28 @@ async function loadLive(){
         ? { away:impliedCents(q.away_price), home:impliedCents(q.home_price) }
         : { away:q.away_price, home:q.home_price };
     }
+    // Build the full upcoming slate, then expose Today / Tomorrow as a toggle.
     const todayET = etDate(new Date().toISOString());
-    const list = [...live.values()]
-      .filter(g=>Object.keys(g.v).length>=2)                       // cross-venue games only
-      .filter(g=>etDate(g.co) === todayET)                         // today's slate only (Eastern)
-      .filter(g=>new Date(g.co).getTime() >= Date.now() - 3*3600e3) // drop games already finished/long-underway
-      .sort((a,b)=>new Date(a.co)-new Date(b.co)).slice(0,24);
-    if(list.length){
-      games.length=0; list.forEach(g=>games.push(g));             // swap demo -> live, in place
-      renderBoard();
-      console.log(`[BLUPRNT] live board loaded: ${list.length} games`);
-    }else{
-      console.warn('[BLUPRNT] no cross-venue games returned; staying on demo');
-    }
+    const [ey,em,ed]=todayET.split('-').map(Number);
+    const tdt=new Date(Date.UTC(ey,em-1,ed)); tdt.setUTCDate(tdt.getUTCDate()+1);
+    const tomorrowET=tdt.toISOString().slice(0,10);
+    allLive = [...live.values()]
+      .filter(g=>Object.keys(g.v).length>=2)
+      .filter(g=>new Date(g.co).getTime() >= Date.now() - 3*3600e3)
+      .sort((a,b)=>new Date(a.co)-new Date(b.co));
+    const present=new Set(allLive.map(g=>etDate(g.co)));
+    slateOpts=[{date:todayET,label:'Today'},{date:tomorrowET,label:'Tomorrow'}].filter(o=>present.has(o.date));
+    slateIdx=0;
+    if(slateOpts.length){ applySlate(); console.log(`[BLUPRNT] live: ${allLive.length} games / ${slateOpts.length} day(s)`); }
+    else console.warn('[BLUPRNT] no cross-venue games; staying on demo');
   }catch(e){ console.warn('[BLUPRNT] live load failed, staying on demo:', e.message); }
+}
+function applySlate(){
+  if(!slateOpts.length) return;
+  const day=slateOpts[Math.min(slateIdx,slateOpts.length-1)].date;
+  const list=allLive.filter(g=>etDate(g.co)===day).slice(0,24);
+  games.length=0; list.forEach(g=>games.push(g));
+  renderBoard(); renderTrueline(); wireSlateToggle();
 }
 loadLive();
 </script>
