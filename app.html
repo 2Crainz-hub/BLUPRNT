@@ -18,7 +18,7 @@
     --txt:#FFFFFF;--txt-2:#AEB4BE;--txt-3:#79818C;
     --steam:#FFB35C;
     --val:#34D9C0;--suspect:#FF5C5C;
-    --k:#6BA8FF;--p:#B98CFF;--b:#FFB35C;--fd:#FF9F57;--pin:#FFCB7A;
+    --k:#6BA8FF;--p:#B98CFF;--b:#FFB35C;--fd:#FF9F57;--pin:#FFCB7A;--mgm:#5FD08A;--czr:#E58FB5;
     --mut:#79818C;--mut-2:#AEB4BE;--line-soft:rgba(255,255,255,.07);
     --blur:blur(30px) saturate(125%);
     --rad:22px;--rad-lg:26px;--rad-sm:14px;
@@ -75,6 +75,9 @@
   .phead{display:flex;align-items:center;justify-content:space-between;padding:17px 21px;border-bottom:1px solid var(--bdr)}
   .phead h3{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-2)}
   .phead .meta{font-size:11.5px;font-weight:600;color:var(--txt-3);font-variant-numeric:tabular-nums}
+  .info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;border:1px solid var(--bdr-2);color:var(--txt-3);font-size:11px;font-weight:800;font-style:normal;cursor:help;position:relative;flex:0 0 auto}
+  .info:hover{color:var(--txt);border-color:var(--txt-3)}
+  .info:hover::after{content:attr(data-tip);position:absolute;top:26px;right:0;width:290px;background:#15161A;border:1px solid var(--bdr);border-radius:11px;padding:13px 15px;font-size:12px;font-weight:500;line-height:1.55;color:var(--txt-2);letter-spacing:0;text-transform:none;z-index:60;box-shadow:0 12px 34px rgba(0,0,0,.55);text-align:left;white-space:normal}
 
   /* === ARB = teal-highlighted frosted hero (Daily-Goal pattern) === */
   .arb{position:relative;background:linear-gradient(135deg,rgba(52,217,192,.16),var(--glass) 60%);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(52,217,192,.5);border-radius:var(--rad-lg);overflow:hidden;margin-bottom:22px;box-shadow:0 0 50px -26px rgba(52,217,192,.5),var(--gl-shadow)}
@@ -113,16 +116,51 @@
   .board tbody tr:hover{background:rgba(255,255,255,.04)}
   .board .mt{font-weight:700;font-size:15px;color:var(--txt)}
   .board .mt .t{font-size:11px;color:var(--txt-3);font-weight:500;display:block;margin-top:2px}
+  .sidecell .team{font-weight:800;font-size:13.5px;color:var(--txt);display:block;margin-bottom:5px}
+  .sidecell .team em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--txt-3);margin-left:6px;vertical-align:middle}
   .sidecell .fair{color:var(--txt-3);font-size:12px;font-weight:500}
   .sidecell .px{color:var(--txt);font-weight:700;font-size:15px;display:block;margin-top:3px}
   .sidecell .px.best{color:var(--teal)}
   .sidecell .ven{font-size:10.5px;color:var(--txt-3);display:block;margin-top:2px;font-weight:500}
   .sidecell .ev{font-size:11px;margin-top:3px;display:block;font-weight:700}
+  .grow{cursor:pointer}
+  .bestcell .team{font-weight:800;font-size:13.5px;color:var(--txt);display:block;margin-bottom:5px}
+  .bestcell .team em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--txt-3);margin-left:6px;vertical-align:middle}
+  .bestcell .bestpx{color:var(--teal);font-weight:800;font-size:17px;display:block}
+  .bestcell .acc{font-size:10.5px;font-weight:800;margin-left:7px;padding:1px 6px;border-radius:6px;vertical-align:middle}
+  .acc.edge{color:var(--teal);background:rgba(52,217,192,.13)}
+  .acc.lean{color:#E8C55A;background:rgba(232,197,90,.12)}
+  .bestcell .ven{font-size:11px;color:var(--txt-2);display:block;margin-top:3px;font-weight:600}
+  .bestcell .fair{font-size:11px;color:var(--txt-3);display:block;margin-top:2px;font-weight:500}
+  .cmp{white-space:nowrap}
+  .cmpbtn{font-size:11px;font-weight:700;color:var(--txt-3);border:1px solid var(--bdr-2);border-radius:8px;padding:6px 11px;display:inline-block}
+  .grow:hover .cmpbtn{color:var(--txt);border-color:var(--txt-3)}
+  .gm-modal{position:fixed;inset:0;background:rgba(5,6,8,.72);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .gm-modal.on{display:flex}
+  .gm-card{position:relative;width:min(520px,94vw);max-height:88vh;overflow:auto;background:#111318;border:1px solid var(--bdr);border-radius:18px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .gm-x{position:absolute;top:15px;right:17px;background:none;border:none;color:var(--txt-3);font-size:24px;line-height:1;cursor:pointer}
+  .gm-x:hover{color:var(--txt)}
+  .gm-h{font-size:19px;font-weight:800;color:var(--txt);padding-right:24px}
+  .gm-t{font-size:12px;color:var(--txt-3);margin:3px 0 18px;font-weight:500}
+  .gm-tab{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  .gm-tab th{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-3);text-align:right;padding:9px 8px;border-bottom:1px solid var(--bdr)}
+  .gm-tab th:first-child{text-align:left}
+  .gm-tab td{padding:11px 8px;border-bottom:1px solid var(--line-soft);text-align:right;color:var(--txt)}
+  .gm-tab td:first-child{text-align:left}
+  .gm-tab .bk{font-weight:600}
+  .gm-tab .bk .vdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
+  .gm-tab .bx{color:var(--teal);font-weight:800}
+  .gm-tab tr.susp td{color:var(--txt-3);opacity:.6}
+  .gm-tab .sflag{font-style:normal;font-size:9px;color:var(--coral);border:1px solid rgba(255,92,92,.4);border-radius:5px;padding:1px 5px;margin-left:6px}
+  .gm-tab .fairrow td{border-top:1px solid var(--bdr);border-bottom:none;font-weight:800;color:var(--txt-2);padding-top:13px}
+  .gm-best{margin-top:16px;font-size:13px;color:var(--txt-2);font-weight:600;line-height:1.55}
+  .gm-best b{color:var(--teal)}
   .ev.pos{color:var(--teal)}.ev.neg{color:var(--txt-3)}
   .badge{font-size:10.5px;font-weight:800;letter-spacing:.02em;border-radius:9px;padding:6px 11px;display:inline-block;white-space:nowrap}
   .badge.arb{color:#0A0A0C;background:var(--teal)}
   .badge.susp{color:var(--coral);border:1px solid rgba(255,92,92,.5);background:rgba(255,92,92,.1)}
-  .badge.edge{color:var(--teal);border:1px solid rgba(52,217,192,.5)}
+  .badge.edge{color:var(--teal);border:1px solid rgba(52,217,192,.5);background:rgba(52,217,192,.1)}
+  .badge.lean{color:#E8C55A;border:1px solid rgba(232,197,90,.55);background:rgba(232,197,90,.09)}
   .badge.flat{color:var(--txt-3);border:1px solid var(--bdr-2)}
 
   /* wave */
@@ -193,6 +231,7 @@
   .disc{font-size:11.5px;color:var(--txt-3);font-weight:500;margin-top:24px;line-height:1.65;max-width:82ch}
 
   @media (max-width:1020px){.grid2{grid-template-columns:1fr}.arbcard{grid-template-columns:1fr 1fr;row-gap:12px}.arbcard .ret{grid-column:1/-1;text-align:left;display:flex;align-items:baseline;gap:14px}}
+  @media (max-width:560px){.hide-sm{display:none}.tail th,.tail td{padding:12px 10px}}
   /* mobile bottom rail */
   .mrail{display:none}
   .railitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:none;cursor:pointer;padding:9px 4px;border-radius:16px;color:var(--txt-3);transition:background .14s,color .14s}
@@ -261,13 +300,15 @@
 //=================================================================
 //  BLUPRNT — shared engine + mock slate
 //=================================================================
-const VENUES = ['kalshi','poly','dk','fd','pin'];
+const VENUES = ['kalshi','poly','dk','fd','pin','mgm','czr'];
 const VEN = {
   kalshi:{label:'Kalshi',   short:'Kalshi',   type:'exchange', color:'var(--k)'},
   poly:  {label:'Polymarket',short:'Polymarket',type:'exchange',color:'var(--p)'},
   dk:    {label:'DraftKings',short:'DraftKings',type:'book',    color:'var(--b)'},
   fd:    {label:'FanDuel',   short:'FanDuel',   type:'book',    color:'var(--fd)'},
   pin:   {label:'Pinnacle',  short:'Pinnacle',  type:'book',    color:'var(--pin)'},
+  mgm:   {label:'BetMGM',    short:'BetMGM',    type:'book',    color:'var(--mgm)'},
+  czr:   {label:'Caesars',   short:'Caesars',   type:'book',    color:'var(--czr)'},
 };
 const isExch = v => VEN[v].type==='exchange';
 
@@ -369,10 +410,7 @@ function route(id){
 let budget=200;
 function renderBoard(){
   const arbs=findArbs();
-  const arbHTML = arbs.length ? arbs.map(x=>arbCard(x)).join('') :
-    `<div class="arb-empty">No risk-free locks on the board right now. We only surface a play when the math guarantees it — and never from a price we’ve flagged as suspect.</div>`;
-
-  document.getElementById('view-board').innerHTML = `
+  const arbSection = !arbs.length ? '' : `
     <div class="arb">
       <div class="arb-head">
         <div class="lock">⬡ Locked · risk-free &nbsp;<b>${arbs.length}</b></div>
@@ -382,22 +420,27 @@ function renderBoard(){
         </div>
         <div class="calc">Total stake <input id="budget" type="number" min="1" value="${budget}"> </div>
       </div>
-      <div class="arb-body">${arbHTML}</div>
-    </div>
+      <div class="arb-body">${arbs.map(x=>arbCard(x)).join('')}</div>
+    </div>`;
+
+  document.getElementById('view-board').innerHTML = `
+    ${arbSection}
 
     <div class="panel">
-      <div class="phead"><h3>Tonight’s board · MLB moneyline</h3><div class="meta">${games.length} games · fair = vig-free consensus</div></div>
+      <div class="phead"><h3>Tonight’s board · MLB moneyline</h3><span class="info" data-tip="This board doesn't pick winners. For each team it shows the best available price and which book has it — tap any game to compare all 7 books side by side. 'Fair' is the vig-free consensus price, so you can see whether even the best number is genuinely good value.">i</span></div>
       <table class="board">
         <thead><tr>
-          <th>Game</th><th>Away</th><th>Home</th><th>Read</th>
+          <th>Game</th><th>Away</th><th>Home</th><th></th>
         </tr></thead>
         <tbody>${games.map(boardRow).join('')}</tbody>
       </table>
     </div>
-    <div class="disc">Fair % is the vig-free consensus across venues; the best price is the cheapest available on either exchange or book. Edge is the expected value of taking that best price versus fair. Suspect prices sit far enough from consensus that we treat them as bad data — they’re excluded from fair, from edges, and from any lock. Illustrative prices for demonstration.</div>`;
+    <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
 
   const b=document.getElementById('budget');
-  b.addEventListener('input',()=>{ budget=Math.max(0,+b.value||0); document.querySelectorAll('[data-arb]').forEach(c=>updateArb(c)); });
+  if(b) b.addEventListener('input',()=>{ budget=Math.max(0,+b.value||0); document.querySelectorAll('[data-arb]').forEach(c=>updateArb(c)); });
+  document.querySelectorAll('.grow').forEach(r=>r.addEventListener('click',()=>openGameModal(r.dataset.game)));
+  const gm=document.getElementById('gmodal'); if(gm) gm.addEventListener('click',e=>{ if(e.target===gm) closeGameModal(); });
 }
 
 function arbCard(x){
@@ -432,30 +475,54 @@ function updateArb(card){
 
 function boardRow(g){
   const a=analyze(g);
-  const arb = findArbs().find(x=>x.g.id===g.id);
   const ba=best(g,'away',a.suspectV), bh=best(g,'home',a.suspectV);
   const evA=(a.fairAway/ba.cost-1)*100, evH=(a.fairHome/bh.cost-1)*100;
-  const sideCell=(fair,b,ev)=>{
-    const bestEv = ev>0.4;
-    return `<td><div class="sidecell">
+  const nBooks=VENUES.filter(v=>g.v[v]).length;
+  const teamCell=(team,tag,fair,b,ev)=>{
+    const acc = ev>=1.5?`<span class="acc edge">+${ev.toFixed(1)}%</span>`
+              : ev>=0.2?`<span class="acc lean">+${ev.toFixed(1)}%</span>` : '';
+    return `<td><div class="bestcell">
+      <span class="team">${team} <em>${tag}</em></span>
+      <span class="bestpx">${pxLabel(b.v,b.price)}${acc}</span>
+      <span class="ven">at ${VEN[b.v].label}</span>
       <span class="fair">${(fair*100).toFixed(0)}% fair</span>
-      <span class="px ${bestEv?'best':''}">${pxLabel(b.v,b.price)}</span>
-      <span class="ven">${VEN[b.v].label}</span>
-      <span class="ev ${ev>0.4?'pos':'neg'}">${ev>0?'+':''}${ev.toFixed(1)}% EV</span>
     </div></td>`;
   };
-  let read;
-  if(arb) read=`<span class="badge arb">⬡ Lock +${(arb.roi*100).toFixed(2)}%</span>`;
-  else if(a.suspectV.length) read=`<span class="badge susp">⚠ ${VEN[a.suspectV[0]].label} suspect</span>`;
-  else if(Math.max(evA,evH)>1.2) read=`<span class="badge edge">Edge ${(Math.max(evA,evH)).toFixed(1)}%</span>`;
-  else read=`<span class="badge flat">Efficient</span>`;
-  return `<tr>
+  return `<tr class="grow" data-game="${g.id}">
     <td><div class="mt">${g.away.ab} @ ${g.home.ab}<span class="t">${g.away.n} at ${g.home.n} · ${g.time}</span></div></td>
-    ${sideCell(a.fairAway,ba,evA)}
-    ${sideCell(a.fairHome,bh,evH)}
-    <td style="text-align:right">${read}</td>
+    ${teamCell(g.away.ab,'AWAY',a.fairAway,ba,evA)}
+    ${teamCell(g.home.ab,'HOME',a.fairHome,bh,evH)}
+    <td class="cmp"><span class="cmpbtn">Compare ${nBooks} \u25B8</span></td>
   </tr>`;
 }
+
+function openGameModal(id){
+  const g=games.find(x=>x.id===id); if(!g) return;
+  const a=analyze(g);
+  const ba=best(g,'away',a.suspectV), bh=best(g,'home',a.suspectV);
+  const rows=VENUES.filter(v=>g.v[v]).map(v=>{
+    const susp=a.suspectV.includes(v), aB=(v===ba.v), hB=(v===bh.v);
+    return `<tr class="${susp?'susp':''}">
+      <td class="bk"><span class="vdot" style="background:${VEN[v].color}"></span>${VEN[v].label}${susp?' <em class="sflag">suspect</em>':''}</td>
+      <td class="${aB?'bx':''}">${pxLabel(v,g.v[v].away)}${aB?' \u25C0':''}</td>
+      <td class="${hB?'bx':''}">${pxLabel(v,g.v[v].home)}${hB?' \u25C0':''}</td>
+    </tr>`;
+  }).join('');
+  const el=document.getElementById('gmodal');
+  el.querySelector('.gm-card').innerHTML=`
+    <button class="gm-x" onclick="closeGameModal()">\u00D7</button>
+    <div class="gm-h">${g.away.n} <span style="color:var(--mut)">@</span> ${g.home.n}</div>
+    <div class="gm-t">${g.time}</div>
+    <table class="gm-tab">
+      <thead><tr><th>Book</th><th>${g.away.ab}</th><th>${g.home.ab}</th></tr></thead>
+      <tbody>${rows}
+        <tr class="fairrow"><td>Fair (vig-free)</td><td>${(a.fairAway*100).toFixed(0)}%</td><td>${(a.fairHome*100).toFixed(0)}%</td></tr>
+      </tbody>
+    </table>
+    <div class="gm-best">Best line \u00b7 ${g.away.ab} \u2192 <b>${pxLabel(ba.v,ba.price)}</b> ${VEN[ba.v].label} \u00b7 ${g.home.ab} \u2192 <b>${pxLabel(bh.v,bh.price)}</b> ${VEN[bh.v].label}</div>`;
+  el.classList.add('on');
+}
+function closeGameModal(){ const el=document.getElementById('gmodal'); if(el) el.classList.remove('on'); }
 
 //=================================================================
 //  VIEW 2 — WAVE (line movement / steam)
@@ -571,6 +638,8 @@ async function tailMapLimit(items, limit, fn){  // at most `limit` wallet-pulls 
   return out;
 }
 const tailToday = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+const tailMoney = n => { const a=Math.abs(n); const s=a>=1e6?(a/1e6).toFixed(1)+'M':a>=1e3?Math.round(a/1e3)+'k':String(Math.round(a)); return (n<0?'-':'+')+'$'+s; };
+const tailSize = n => { const a=Math.abs(n||0); return '$'+(a>=1e6?(a/1e6).toFixed(1)+'M':a>=1e3?(a/1e3).toFixed(1)+'k':a>=100?String(Math.round(a)):a.toFixed(2)); };
 const tSlugDate = s => { const m=String(s||'').match(/(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; };
 function tIsLiveMlb(p){
   if(!p || typeof p.slug!=='string' || !p.slug.startsWith('mlb-')) return false;  // baseball only
@@ -615,8 +684,10 @@ function renderTail(){
     <div class="grid2">
       <div class="panel" style="overflow:hidden">
         <div class="phead"><h3>Top sports traders · live MLB</h3><div class="meta">by all-time Polymarket sports profit</div></div>
+        <div style="overflow-x:auto">
         <table class="tail"><thead><tr><th>#</th><th>Trader</th><th>Sports P/L</th><th class="hide-sm">ROI</th><th>MLB</th></tr></thead>
         <tbody id="walletRows"></tbody></table>
+        </div>
       </div>
       <div class="panel" style="overflow:hidden">
         <div class="phead"><h3 id="tailWho"></h3><div class="meta" id="tailMeta"></div></div>
@@ -628,7 +699,7 @@ function renderTail(){
     <tr data-wal="${i}" class="${i===tailSel?'sel':''}">
       <td class="rk">${i+1}</td>
       <td><div class="wh">${w.name}</div><div class="ad mono">${w.addr}</div></td>
-      <td class="pos">+$${(w.pnl/1000).toFixed(0)}k</td>
+      <td class="${w.pnl>=0?'pos':'neg'}">${tailMoney(w.pnl)}</td>
       <td class="hide-sm ${w.roi>=0?'pos':''}">${w.roi>=0?'+':''}${w.roi.toFixed(1)}%</td>
       <td>${w.picks.length}</td>
     </tr>`).join('');
@@ -640,7 +711,7 @@ function renderTail(){
     `<div style="padding:10px 18px 4px;font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Live MLB positions</div>`+
     w.picks.map(p=>`<div class="posrow">
       <div class="s"><div class="n">${p.side}</div><div class="d">${p.game} · ${p.price}¢</div></div>
-      <div class="amt">$${(p.size/1000).toFixed(1)}k</div>
+      <div class="amt">${tailSize(p.size)}</div>
     </div>`).join('');
 }
 
@@ -718,7 +789,7 @@ function buildRail(){
 //=================================================================
 const SB_URL  = 'https://qedwppnqudszajljyujd.supabase.co';
 const SB_ANON = 'sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';   // Supabase publishable key — safe in the browser
-const SLUG2KEY = { pinnacle:'pin', draftkings:'dk', fanduel:'fd', kalshi:'kalshi', polymarket:'poly' };
+const SLUG2KEY = { pinnacle:'pin', draftkings:'dk', fanduel:'fd', kalshi:'kalshi', polymarket:'poly', betmgm:'mgm', caesars:'czr' };
 const impliedCents = a => Math.round(100 / amDec(a));   // american -> exchange cents (implied %)
 const NICK2 = ['Blue Jays','Red Sox','White Sox'];   // two-word nicknames
 const nickname = full => { const s=(full||'').trim(); for(const n of NICK2) if(s.endsWith(n)) return n; return s.split(/\s+/).pop(); };
