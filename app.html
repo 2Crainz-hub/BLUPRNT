@@ -543,13 +543,39 @@ function drawWave(){
 //=================================================================
 // ── live: top Polymarket sports traders + their current MLB positions (TAIL v1) ──
 const TAIL_LB = 'https://data-api.polymarket.com/v1/leaderboard?category=SPORTS&timePeriod=ALL&orderBy=PNL&limit=40';
-const tailPosUrl = w => `https://data-api.polymarket.com/positions?user=${w}&limit=100&sortBy=CURRENT&sortDirection=DESC`;
+const tailPosUrl = (w,off) => `https://data-api.polymarket.com/positions?user=${w}&limit=500&offset=${off}&sortBy=CURRENT&sortDirection=DESC`;
+async function tailGet(url, tries=4){           // retry politely on rate-limit (429)
+  for(let i=0;i<tries;i++){
+    try{
+      const r=await fetch(url);
+      if(r.status===429){ await new Promise(res=>setTimeout(res,700*(i+1))); continue; }
+      return r.ok ? await r.json() : [];
+    }catch(e){ if(i===tries-1) return []; await new Promise(res=>setTimeout(res,500)); }
+  }
+  return [];
+}
+async function tailAllPositions(w){             // paginate — whales hold hundreds of open bets
+  const out=[]; const page=500;
+  for(let off=0; off<2500; off+=page){
+    const batch = await tailGet(tailPosUrl(w,off));
+    if(!Array.isArray(batch) || !batch.length) break;
+    out.push(...batch);
+    if(batch.length < page) break;              // reached the last page
+  }
+  return out;
+}
+async function tailMapLimit(items, limit, fn){  // at most `limit` wallet-pulls running at once
+  const out=new Array(items.length); let idx=0;
+  const worker=async()=>{ while(idx<items.length){ const i=idx++; out[i]=await fn(items[i]); } };
+  await Promise.all(Array.from({length:Math.min(limit,items.length)}, worker));
+  return out;
+}
 const tailToday = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
 const tSlugDate = s => { const m=String(s||'').match(/(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; };
 function tIsLiveMlb(p){
   if(!p || typeof p.slug!=='string' || !p.slug.startsWith('mlb-')) return false;  // baseball only
   if(p.redeemable) return false;                          // settled -> skip
-  if(!(p.curPrice>0 && p.curPrice<1)) return false;       // resolved markets sit at 0 or 1
+  if(p.curPrice===0 || p.curPrice===1) return false;      // only drop definitively-resolved markets
   const d=tSlugDate(p.slug); if(d && d<tailToday()) return false;   // game already past
   return true;
 }
@@ -560,11 +586,11 @@ async function loadTail(){
   try{
     const lb = await fetch(TAIL_LB).then(r=>{ if(!r.ok) throw new Error('leaderboard '+r.status); return r.json(); });
     const top = (lb||[]).slice(0,40);
-    const res = await Promise.allSettled(top.map(t=>fetch(tailPosUrl(t.proxyWallet)).then(r=>r.ok?r.json():[])));
+    const res = await tailMapLimit(top, 5, t=>tailAllPositions(t.proxyWallet));
     const out=[];
     top.forEach((t,i)=>{
-      if(res[i].status!=='fulfilled') return;
-      const picks=(res[i].value||[]).filter(tIsLiveMlb).map(p=>({
+      const positions = res[i] || [];
+      const picks=positions.filter(tIsLiveMlb).map(p=>({
         side:p.outcome, game:p.title, price:Math.round((p.curPrice||0)*100), size:p.currentValue||0
       })).sort((a,b)=>b.size-a.size);
       if(picks.length) out.push({
