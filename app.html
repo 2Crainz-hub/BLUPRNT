@@ -279,9 +279,9 @@
     </div>
     <div class="navlbl">Products</div>
     <nav class="nav" id="nav"></nav>
-    <div class="side-foot">
+    <div class="side-foot" id="uFoot">
       <div class="av"></div>
-      <div><div class="who">Nick D.</div><div class="plan">Advanced plan</div></div>
+      <div><div class="who" id="uWho">Member</div><div class="plan" id="uPlan">Free plan</div></div>
     </div>
   </aside>
 
@@ -308,7 +308,28 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ---- auth gate: no session -> back to login ----
+const _SB_URL='https://qedwppnqudszajljyujd.supabase.co';
+const _SB_ANON='sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';
+const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
+(async () => {
+  const { data:{ session } } = await _auth.getSession();
+  if(!session){ location.replace('/'); return; }
+  const email = session.user.email || '';
+  const who=document.getElementById('uWho'), plan=document.getElementById('uPlan');
+  if(who) who.textContent = (email.split('@')[0]) || 'Member';
+  try{
+    const r = await fetch(`${_SB_URL}/rest/v1/profiles?select=tier&id=eq.${session.user.id}`,
+      { headers:{ apikey:_SB_ANON, Authorization:`Bearer ${session.access_token}` } });
+    const rows = await r.json(); const tier = (rows && rows[0] && rows[0].tier) || 'free';
+    if(plan) plan.textContent = tier.charAt(0).toUpperCase()+tier.slice(1)+' plan';
+    window._tier = tier;
+  }catch(e){ window._tier='free'; }
+  const foot=document.getElementById('uFoot');
+  if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', async ()=>{ if(confirm('Sign out?')){ await _auth.signOut(); location.replace('/'); } }); }
+})();
 //=================================================================
 //  BLUPRNT — shared engine + mock slate
 //=================================================================
@@ -389,8 +410,6 @@ function findArbs(){
 //  NAV + ROUTER
 //=================================================================
 const PRODUCTS = [
-  { id:'alpha',    ico:'✦', nm:'Project Alpha', ds:'Our official plays', eyebrow:'PROJECT ALPHA',
-    title:'The plays we’re making.', sub:'Not data to interpret — our actual positions. When Alpha names a play, we’re saying bet it, and our record is on the line.' },
   { id:'board',    ico:'▦', nm:'The Board', ds:'Every market, side by side', eyebrow:'THE BOARD',
     title:'Every market, one board.', sub:'Kalshi, Polymarket and the books on one screen — with risk-free locks surfaced first and fake edges flagged before you chase them.' },
   { id:'wave',     ico:'∿', nm:'Wave', ds:'Line movement & steam', eyebrow:'WAVE', soon:true,
@@ -399,6 +418,8 @@ const PRODUCTS = [
     title:'Ride with the winners.', sub:'The most profitable wallets on Polymarket, what they’re backing right now, and what it’s cost to fade them.' },
   { id:'trueline', ico:'⌁', nm:'TrueLine', ds:'Our model. Our call.', eyebrow:'TRUELINE',
     title:'Our number on every game.', sub:'One honest line per game to measure the market against — and the calls we’re actually making, with a transparent record.' },
+  { id:'alpha',    ico:'✦', nm:'Project Alpha', ds:'Our official plays', eyebrow:'PROJECT ALPHA',
+    title:'The plays we’re making.', sub:'Not data to interpret — our actual positions. When Alpha names a play, we’re saying bet it, and our record is on the line.' },
 ];
 let current='board';
 
@@ -422,6 +443,7 @@ function route(id){
   document.querySelectorAll('.railitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+id));
   if(id==='tail' && !tailLoaded){ tailLoaded=true; loadTail(); }
+  if(id==='alpha' && !alphaLoaded){ alphaLoaded=true; loadAlpha(); }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -516,7 +538,7 @@ function boardRow(g){
     <td><div class="mt">${g.away.ab} @ ${g.home.ab}<span class="t">${g.away.n} at ${g.home.n} · ${g.time}</span></div></td>
     ${teamCell(g.away.ab,'AWAY',a.fairAway,ba,evA)}
     ${teamCell(g.home.ab,'HOME',a.fairHome,bh,evH)}
-    <td class="cmp"><span class="cmpbtn">Compare ${nBooks} \u25B8</span></td>
+    <td class="cmp"><span class="cmpbtn">Compare odds \u25B8</span></td>
   </tr>`;
 }
 
@@ -799,19 +821,109 @@ function pickCard(c){
   </div>`;
 }
 
+// ===================== PROJECT ALPHA — MLB model =====================
+let alphaStatus='idle', alphaTop=[], alphaPlayCount=0, alphaMatched=0, alphaErr='', alphaLoaded=false;
+const AL_SEASON=String(new Date().getFullYear());
+const AL_SHARE=0.61, AL_R=4.5, AL_N=15000, AL_HOME=0.15, AL_THRESH=0.03, AL_CAP=0.10;
+// approximate run park factors by home team (static; refine later)
+const PARK={'Colorado Rockies':1.14,'Cincinnati Reds':1.06,'Boston Red Sox':1.04,'Baltimore Orioles':1.03,'Kansas City Royals':1.02,'Texas Rangers':1.02,'Arizona Diamondbacks':1.02,'New York Yankees':1.02,'Philadelphia Phillies':1.01,'Chicago Cubs':1.01,'Atlanta Braves':1.01,'Los Angeles Angels':1.0,'Toronto Blue Jays':1.0,'Washington Nationals':1.0,'Minnesota Twins':1.0,'Houston Astros':1.0,'St. Louis Cardinals':1.0,'Chicago White Sox':1.0,'New York Mets':0.99,'Milwaukee Brewers':0.99,'Pittsburgh Pirates':0.99,'Los Angeles Dodgers':0.98,'Cleveland Guardians':0.98,'Tampa Bay Rays':0.98,'Athletics':0.98,'Detroit Tigers':0.97,'Miami Marlins':0.96,'San Diego Padres':0.94,'Seattle Mariners':0.94,'San Francisco Giants':0.93};
+// engine
+function alExpRuns(off,oppSt,oppPen,park,homeBump,lg){ const p=AL_SHARE*oppSt+(1-AL_SHARE)*oppPen; return lg*off*p*park+homeBump; }
+function alRandn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function alGamma(k,th){ if(k<1) return alGamma(k+1,th)*Math.pow(Math.random(),1/k); const d=k-1/3,c=1/Math.sqrt(9*d); for(;;){ let x,v; do{x=alRandn();v=1+c*x;}while(v<=0); v=v*v*v; const u=Math.random(); if(u<1-0.0331*x*x*x*x)return d*v*th; if(Math.log(u)<0.5*x*x+d*(1-v+Math.log(v)))return d*v*th; } }
+function alPois(l){ if(l<=0)return 0; if(l<30){ const L=Math.exp(-l); let k=0,p=1; do{k++;p*=Math.random();}while(p>L); return k-1; } return Math.max(0,Math.round(l+Math.sqrt(l)*alRandn())); }
+function alSim(muH,muA){ let hw=0,tie=0; for(let i=0;i<AL_N;i++){ const rh=alPois(alGamma(AL_R,muH/AL_R)),ra=alPois(alGamma(AL_R,muA/AL_R)); if(rh>ra)hw++; else if(rh===ra)tie++; } return (hw+tie*muH/(muH+muA))/AL_N; }
+function alKelly(p,dec){ const k=(p*dec-1)/(dec-1); return Math.max(0,Math.min(0.05,k*0.25)); }
+async function alGet(u){ const r=await fetch(u); if(!r.ok) throw new Error('StatsAPI '+r.status); return r.json(); }
+const alNorm=n=>String(n||'').toLowerCase().replace(/[^a-z]/g,'');
+
+async function loadAlpha(){
+  alphaStatus='loading'; renderAlpha();
+  try{
+    const date=slateOpts.length?slateOpts[Math.min(slateIdx,slateOpts.length-1)].date:etDate(new Date().toISOString());
+    const base='https://statsapi.mlb.com/api/v1';
+    const [sched,hit,pit]=await Promise.all([
+      alGet(`${base}/schedule?sportId=1&date=${date}&hydrate=probablePitcher(stats(group=[pitching],type=[season],season=${AL_SEASON})),team`),
+      alGet(`${base}/teams/stats?season=${AL_SEASON}&sportId=1&stats=season&group=hitting`),
+      alGet(`${base}/teams/stats?season=${AL_SEASON}&sportId=1&stats=season&group=pitching`),
+    ]);
+    const teamRG={}, teamERA={}; let sRG=0,nRG=0,sERA=0,nERA=0;
+    for(const s of (hit.stats?.[0]?.splits||[])){ const id=s.team?.id,gp=+s.stat?.gamesPlayed||0,r=+s.stat?.runs||0; if(id&&gp){ teamRG[id]=r/gp; sRG+=r/gp; nRG++; } }
+    for(const s of (pit.stats?.[0]?.splits||[])){ const id=s.team?.id,e=+s.stat?.era||0; if(id&&e){ teamERA[id]=e; sERA+=e; nERA++; } }
+    const lgRG=nRG?sRG/nRG:4.45, lgERA=nERA?sERA/nERA:4.20;
+    const sgames={};
+    for(const d of (sched.dates||[])) for(const gm of (d.games||[])){
+      const h=gm.teams?.home,a=gm.teams?.away; if(!h?.team||!a?.team) continue;
+      const stERA=pp=>{ const e=pp?.stats?.[0]?.splits?.[0]?.stat?.era; return e?+e:null; };
+      sgames[alNorm(a.team.name)+'@'+alNorm(h.team.name)]={ homeId:h.team.id,awayId:a.team.id,
+        homeStERA:stERA(h.probablePitcher),awayStERA:stERA(a.probablePitcher),
+        homeSt:h.probablePitcher?.fullName||null,awaySt:a.probablePitcher?.fullName||null,
+        park:PARK[h.team.name]??1.0 };
+    }
+    const out=[];
+    for(const g of games){
+      const sg=sgames[alNorm(g.away.n)+'@'+alNorm(g.home.n)]; if(!sg) continue;
+      const a=analyze(g), tl=trueLine(g,a.suspectV); if(!tl) continue;
+      const hOff=(teamRG[sg.homeId]||lgRG)/lgRG, aOff=(teamRG[sg.awayId]||lgRG)/lgRG;
+      const hPen=(teamERA[sg.homeId]||lgERA)/lgERA, aPen=(teamERA[sg.awayId]||lgERA)/lgERA;
+      const hSt=sg.homeStERA?sg.homeStERA/lgERA:hPen, aSt=sg.awayStERA?sg.awayStERA/lgERA:aPen;
+      const missing=!sg.homeStERA||!sg.awayStERA;
+      const muH=alExpRuns(hOff,aSt,aPen,sg.park,AL_HOME,lgRG), muA=alExpRuns(aOff,hSt,hPen,sg.park,0,lgRG);
+      const pHome=alSim(muH,muA);
+      const eHome=pHome-tl.home, eAway=(1-pHome)-tl.away;
+      const homeBetter=eHome>=eAway, edge=homeBetter?eHome:eAway;
+      if(edge<=0 || edge>AL_CAP) continue;                 // no value, or implausible (likely-stale) -> skip
+      const which=homeBetter?'home':'away', b=best(g,which,a.suspectV);
+      const p=homeBetter?pHome:1-pHome, mkt=homeBetter?tl.home:tl.away;
+      const conv=(edge>=AL_THRESH && !missing)?'play':'lean';   // PLAY = real 3%+ edge, confirmed starter; else LEAN (watch)
+      out.push({ g, team:homeBetter?g.home.ab:g.away.ab, p, mkt, edge, b, stake:alKelly(p,1/b.cost), conv });
+    }
+    out.sort((x,y)=>y.edge-x.edge);
+    alphaMatched=out.length;
+    alphaTop=out.slice(0,3);                                // always surface the day's top spots (never zero)
+    alphaPlayCount=out.filter(x=>x.conv==='play').length;
+    alphaStatus= alphaTop.length ? 'ready' : (Object.keys(sgames).length ? 'flat' : 'nomatch');
+  }catch(e){ alphaStatus='error'; alphaErr=String(e&&e.message||e); }
+  renderAlpha();
+}
+
+function alphaPlayCard(x){
+  const play=x.conv==='play';
+  return `<div class="pick">
+    <div class="top"><div class="game">${x.g.away.ab} @ ${x.g.home.ab} · ${x.g.time}</div><div class="conv ${x.conv}">${play?'PLAY':'LEAN'}</div></div>
+    <div class="call"><span>${x.team}</span> ${pxLabel(x.b.v,x.b.price)} · ${VEN[x.b.v].label}</div>
+    <div class="lines">
+      <div class="x"><div class="l">Model</div><div class="v">${(x.p*100).toFixed(0)}%</div></div>
+      <div class="x"><div class="l">Market</div><div class="v">${(x.mkt*100).toFixed(0)}%</div></div>
+      <div class="x"><div class="l">Edge</div><div class="v edge">+${(x.edge*100).toFixed(1)}%</div></div>
+      ${play?`<div class="x"><div class="l">Bet size</div><div class="v">${(x.stake*100).toFixed(0)}%</div></div>`:''}
+    </div>
+    <div class="note">${play
+      ? `Our model gives the ${x.team} about a ${(x.p*100).toFixed(0)}% chance to win — better than the ~${(x.mkt*100).toFixed(0)}% the market is giving them, and that gap is the value. Best price is ${pxLabel(x.b.v,x.b.price)} at ${VEN[x.b.v].label}. Suggested bet size: about ${(x.stake*100).toFixed(0)}% of your bankroll.`
+      : `Our model leans ${x.team} here — about ${(x.p*100).toFixed(0)}% to win vs the market's ~${(x.mkt*100).toFixed(0)}%. It's a small edge, below our bet line, so treat it as one to watch rather than a play.`}</div>
+  </div>`;
+}
+
 function renderAlpha(){
   const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  document.getElementById('view-alpha').innerHTML=`
-    <div class="record">
-      <div class="c"><div class="l">CLV</div><div class="v" style="color:var(--txt-3)">—</div></div>
-      <div class="c"><div class="l">ROI</div><div class="v" style="color:var(--txt-3)">—</div></div>
-      <div class="c"><div class="l">Plays</div><div class="v">0</div></div>
-      <div class="c"><div class="l">Tracking since</div><div class="v" style="font-size:15px">${today}</div></div>
-    </div>
-    <div class="tl-note">This scoreboard tracks Alpha’s official plays — graded on closing-line value and ROI, win or lose. It starts empty and earns every number.</div>
-    <div class="panel"><div class="phead"><h3>Today’s plays</h3></div>
-      <div style="padding:44px 24px;text-align:center;color:var(--mut);line-height:1.6">Project Alpha’s selection logic is being finalized.<br>This is where our official plays for the day will appear — the bets we’re actually making, on the record.</div>
-    </div>`;
+  const score=`<div class="record">
+    <div class="c"><div class="l">CLV</div><div class="v" style="color:var(--txt-3)">—</div></div>
+    <div class="c"><div class="l">ROI</div><div class="v" style="color:var(--txt-3)">—</div></div>
+    <div class="c"><div class="l">Plays graded</div><div class="v">0</div></div>
+    <div class="c"><div class="l">Tracking since</div><div class="v" style="font-size:15px">${today}</div></div>
+  </div>
+  <div class="tl-note">Alpha's official plays, graded on closing-line value and ROI once games settle. The record starts empty and earns every number.</div>`;
+  let body;
+  if(alphaStatus==='loading'||alphaStatus==='idle') body=`<div class="panel"><div style="padding:40px 24px;text-align:center;color:var(--mut);line-height:1.6">Running the model on today's slate — pulling probable starters and season stats, then simulating every game…</div></div>`;
+  else if(alphaStatus==='error') body=`<div class="panel"><div style="padding:34px 24px;color:var(--mut);line-height:1.6">Couldn't reach MLB StatsAPI from the browser (<span class="mono">${alphaErr}</span>). If it's a CORS block, the fix is a small proxy — same as we'd have done for Tail.</div></div>`;
+  else if(alphaStatus==='nomatch') body=`<div class="panel"><div style="padding:34px 24px;color:var(--mut);line-height:1.6">Couldn't line up today's board games with MLB's schedule data (a team-name mismatch, most likely).</div></div>`;
+  else if(alphaStatus==='flat') body=`<div class="panel"><div style="padding:34px 24px;text-align:center;color:var(--mut);line-height:1.6">Market's efficient across today's slate — our model doesn't see a spot worth flagging right now. Rare, but some nights the sharp line is just right. Worth another look closer to first pitch as lineups firm up.</div></div>`;
+  else {
+    const leans=alphaTop.length-alphaPlayCount;
+    const head=`<div class="phead" style="border:0;padding:2px 2px 14px"><h3>Today's top spots</h3><div class="meta">${alphaPlayCount} play${alphaPlayCount===1?'':'s'} · ${leans} lean${leans===1?'':'s'} · ${alphaMatched} modeled</div></div>`;
+    body=head+`<div class="picks">${alphaTop.map(alphaPlayCard).join('')}</div>`+`<div class="disc">Alpha runs an independent MLB run-projection model (offense × opposing starter & bullpen × park, simulated ~${(AL_N/1000)}k times per game) and surfaces its top spots vs the sharp market line. A PLAY is a real 3%+ edge with a confirmed starter; a LEAN is a smaller edge we'd watch, not bet. Inputs are free public stats — the honest ceiling is that public data rarely beats a sharp close, so real edges stay small. Judge by CLV over a large sample, not any single night.</div>`;
+  }
+  document.getElementById('view-alpha').innerHTML=score+body;
 }
 
 //=================================================================

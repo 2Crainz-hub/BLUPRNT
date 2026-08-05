@@ -406,9 +406,9 @@
           <p class="eyebrow" id="authEyebrow">MEMBER LOGIN</p>
           <h2 id="authTitle">Welcome back.</h2>
           <p class="auth-sub" id="authSub">Sign in to your edge.</p>
-          <div class="auth-field" id="nameField" style="display:none"><input type="text" placeholder="Full name" /></div>
-          <div class="auth-field"><input type="email" placeholder="Email address" /></div>
-          <div class="auth-field"><input type="password" placeholder="Password" /></div>
+          <div class="auth-field" id="nameField" style="display:none"><input type="text" id="authName" placeholder="Full name" /></div>
+          <div class="auth-field"><input type="email" id="authEmail" placeholder="Email address" /></div>
+          <div class="auth-field"><input type="password" id="authPassword" placeholder="Password" /></div>
           <button class="btn-primary" id="authSubmit">Log in</button>
           <div class="auth-divider"><span>or</span></div>
           <button class="btn-google">
@@ -416,6 +416,7 @@
             Continue with Google
           </button>
           <p class="auth-foot"><span id="authFootText">New here?</span> <button class="link-inline" id="authToggle">Create an account</button></p>
+          <p id="authErr" style="display:none;color:#ff7a7a;font-size:13px;margin-top:12px;text-align:center"></p>
         </div>
       </div>
     </section>
@@ -512,6 +513,7 @@
     </section>
   </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d');
@@ -816,11 +818,40 @@ authToggle.addEventListener('click', () => {
   authToggle.textContent = signupMode ? 'Log in' : 'Create an account';
 });
 
-// ---- enter the product app (wiring only) ----
+// ---- real auth (Supabase) ----
+const SB_URL='https://qedwppnqudszajljyujd.supabase.co';
+const SB_ANON='sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';
+const sb = window.supabase.createClient(SB_URL, SB_ANON);
 const APP_URL = '/app';
-if (authSubmit) authSubmit.addEventListener('click', () => { location.href = APP_URL; });
+const authErr=document.getElementById('authErr');
+const showErr=m=>{ if(authErr){ authErr.textContent=m||''; authErr.style.display=m?'block':'none'; } };
+
+if (authSubmit) authSubmit.addEventListener('click', async () => {
+  const email=(document.getElementById('authEmail').value||'').trim();
+  const password=document.getElementById('authPassword').value||'';
+  if(!email||!password){ showErr('Enter your email and password.'); return; }
+  showErr(''); authSubmit.disabled=true; const label=authSubmit.textContent; authSubmit.textContent='\u2026';
+  try{
+    if(signupMode){
+      const { error } = await sb.auth.signUp({ email, password });
+      if(error) throw error;
+      const { data:{ session } } = await sb.auth.getSession();
+      if(session) location.href=APP_URL; else showErr('Check your email to confirm your account, then log in.');
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      location.href=APP_URL;
+    }
+  } catch(e){ showErr(e.message||'Something went wrong.'); }
+  finally { authSubmit.disabled=false; authSubmit.textContent=label; }
+});
+
 const googleBtn = document.querySelector('.btn-google');
-if (googleBtn) googleBtn.addEventListener('click', () => { location.href = APP_URL; });
+if (googleBtn) googleBtn.addEventListener('click', async () => {
+  showErr('');
+  const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin+'/app' } });
+  if(error) showErr(error.message);
+});
 
 // ---- ambient mind-map backdrop (no labels) ----
 const amb = document.getElementById('ambient');
