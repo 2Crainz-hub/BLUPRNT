@@ -53,6 +53,17 @@
   .tag.soon{background:var(--txt-3)}
   .railitem.soon{opacity:.72;position:relative}
   .soon-banner{background:rgba(232,197,90,.1);border:1px solid rgba(232,197,90,.35);color:#E8C55A;border-radius:12px;padding:13px 17px;font-size:13px;font-weight:600;margin-bottom:18px;line-height:1.5}
+  .navitem.locked{opacity:.62}
+  .tag.lock{background:none;padding:0;font-size:13px}
+  .freebar{background:rgba(52,217,192,.08);border:1px solid rgba(52,217,192,.3);border-radius:12px;padding:13px 17px;font-size:13px;color:var(--txt-2);margin-bottom:16px;line-height:1.5}
+  .freebar a{color:var(--teal);font-weight:700;text-decoration:none}
+  .paywall{padding:52px 28px;text-align:center;max-width:460px;margin:0 auto}
+  .paywall .pw-lock{font-size:34px;margin-bottom:16px}
+  .paywall h3{font-size:21px;font-weight:800;margin-bottom:12px;color:var(--txt)}
+  .paywall p{color:var(--txt-2);line-height:1.55;margin:0 0 8px}
+  .paywall .pw-price{color:var(--txt);font-weight:700;margin:16px 0 22px;font-size:15px}
+  .paywall .pw-btn{background:var(--teal);color:#0A0A0C;border:none;border-radius:12px;padding:13px 30px;font-weight:800;font-size:14px;cursor:pointer}
+  .paywall .pw-btn:hover{opacity:.9}
   .rsoon{position:absolute;top:3px;right:8px;font-size:7px;font-weight:800;letter-spacing:.03em;color:var(--txt-3)}
   .side-foot{margin-top:auto;border-top:1px solid var(--bdr);padding-top:15px;display:flex;align-items:center;gap:11px}
   .side-foot .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--teal));flex-shrink:0;border:2px solid rgba(255,255,255,.14)}
@@ -327,6 +338,7 @@ const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
     if(plan) plan.textContent = tier.charAt(0).toUpperCase()+tier.slice(1)+' plan';
     window._tier = tier;
   }catch(e){ window._tier='free'; }
+  applyTier();
   const foot=document.getElementById('uFoot');
   if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', async ()=>{ if(confirm('Sign out?')){ await _auth.signOut(); location.replace('/'); } }); }
 })();
@@ -423,13 +435,31 @@ const PRODUCTS = [
 ];
 let current='board';
 
+// ---- tier gating ----
+const TIER_RANK={free:0,basic:1,advanced:2};
+const MODULE_TIER={board:0,wave:1,tail:1,trueline:2,alpha:2};
+const tierAllows=id=>(TIER_RANK[window._tier]??0) >= (MODULE_TIER[id]??0);
+function paywallHTML(id){
+  const p=PRODUCTS.find(x=>x.id===id), adv=MODULE_TIER[id]>=2, tier=adv?'Advanced':'Basic', price=adv?'$79':'$29';
+  return `<div class="panel"><div class="paywall">
+    <div class="pw-lock">\uD83D\uDD12</div>
+    <h3>${p.nm} is ${adv?'an':'a'} ${tier} feature</h3>
+    <p>${p.sub}</p>
+    <div class="pw-price">Unlock with <b>${tier}</b> \u00b7 ${price}/mo</div>
+    <button class="pw-btn" onclick="location.href='/#pricing'">See plans</button>
+  </div></div>`;
+}
+function applyTier(){ buildNav(); buildRail(); route(current); }
 function buildNav(){
-  document.getElementById('nav').innerHTML = PRODUCTS.map(p=>`
-    <div class="navitem ${p.id===current?'on':''} ${p.soon?'soon':''}" data-go="${p.id}">
+  document.getElementById('nav').innerHTML = PRODUCTS.map(p=>{
+    const locked=!tierAllows(p.id);
+    const tag = locked?'<div class="tag lock">\uD83D\uDD12</div>':(p.soon?'<div class="tag soon">SOON</div>':(p.id==='trueline'?'<div class="tag">ADV</div>':''));
+    return `<div class="navitem ${p.id===current?'on':''} ${p.soon?'soon':''} ${locked?'locked':''}" data-go="${p.id}">
       <div class="ico">${p.ico}</div>
       <div><div class="nm">${p.nm}</div><div class="ds">${p.ds}</div></div>
-      ${p.soon?'<div class="tag soon">SOON</div>':(p.id==='trueline'?'<div class="tag">ADV</div>':'')}
-    </div>`).join('');
+      ${tag}
+    </div>`;
+  }).join('');
   document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
 }
 function route(id){
@@ -442,8 +472,15 @@ function route(id){
   document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
   document.querySelectorAll('.railitem').forEach(n=>n.classList.toggle('on',n.dataset.go===id));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+id));
-  if(id==='tail' && !tailLoaded){ tailLoaded=true; loadTail(); }
-  if(id==='alpha' && !alphaLoaded){ alphaLoaded=true; loadAlpha(); }
+  const _v=document.getElementById('view-'+id);
+  if(!tierAllows(id)){ if(_v) _v.innerHTML=paywallHTML(id); }
+  else {
+    if(id==='board') renderBoard();
+    else if(id==='wave') renderWave();
+    else if(id==='trueline') renderTrueline();
+    else if(id==='tail'){ if(!tailLoaded){ tailLoaded=true; loadTail(); } else renderTail(); }
+    else if(id==='alpha'){ if(!alphaLoaded){ alphaLoaded=true; loadAlpha(); } else renderAlpha(); }
+  }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -456,7 +493,10 @@ function slateToggleHTML(){ if(slateOpts.length<2) return ''; return `<div class
 function wireSlateToggle(){ document.querySelectorAll('[data-slate]').forEach(b=>b.addEventListener('click',()=>{ slateIdx=+b.dataset.slate; applySlate(); })); }
 function renderBoard(){
   const arbs=findArbs();
-  const arbSection = !arbs.length ? '' : `
+  const free=(TIER_RANK[window._tier]??0)<1;
+  const shown=free?games.slice(0,3):games;
+  const freeBanner = free ? `<div class="freebar">You're on the <b>Free</b> plan \u2014 showing ${Math.min(3,games.length)} of ${games.length} games. <a href="/#pricing">Upgrade to Basic ($29/mo)</a> for the full board, Tail, and live movement.</div>` : '';
+  const arbSection = (free||!arbs.length) ? '' : `
     <div class="arb">
       <div class="arb-head">
         <div class="lock">⬡ Locked · risk-free &nbsp;<b>${arbs.length}</b></div>
@@ -471,14 +511,14 @@ function renderBoard(){
 
   document.getElementById('view-board').innerHTML = `
     ${arbSection}
-
+    ${freeBanner}
     <div class="panel">
       <div class="phead"><h3>The board · MLB moneyline</h3><div class="pright">${slateToggleHTML()}<span class="info" data-tip="This board doesn't pick winners. For each team it shows the best available price and which book has it — tap any game to compare all 7 books side by side. 'Fair' is the vig-free consensus price, so you can see whether even the best number is genuinely good value.">i</span></div></div>
       <table class="board">
         <thead><tr>
           <th>Game</th><th>Away</th><th>Home</th><th></th>
         </tr></thead>
-        <tbody>${games.map(boardRow).join('')}</tbody>
+        <tbody>${shown.map(boardRow).join('')}</tbody>
       </table>
     </div>
     <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
@@ -937,7 +977,8 @@ route('board');
 function buildRail(){
   const rail=document.createElement('nav');
   rail.className='mrail';
-  rail.innerHTML=PRODUCTS.map(p=>`<button class="railitem ${p.id===current?'on':''} ${p.soon?'soon':''}" data-go="${p.id}"><span class="rico">${p.ico}</span><span class="rlbl">${p.nm.replace('The ','')}</span>${p.soon?'<span class="rsoon">SOON</span>':''}</button>`).join('');
+  document.querySelector('.mrail')?.remove();
+  rail.innerHTML=PRODUCTS.map(p=>{ const locked=!tierAllows(p.id); return `<button class="railitem ${p.id===current?'on':''} ${p.soon||locked?'soon':''}" data-go="${p.id}"><span class="rico">${p.ico}</span><span class="rlbl">${p.nm.replace('The ','')}</span>${locked?'<span class="rsoon">\uD83D\uDD12</span>':(p.soon?'<span class="rsoon">SOON</span>':'')}</button>`; }).join('');
   document.body.appendChild(rail);
   rail.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>route(el.dataset.go)));
 }
@@ -990,7 +1031,7 @@ async function loadLive(){
     const tomorrowET=tdt.toISOString().slice(0,10);
     allLive = [...live.values()]
       .filter(g=>Object.keys(g.v).length>=2)
-      .filter(g=>new Date(g.co).getTime() >= Date.now() - 3*3600e3)
+      .filter(g=>new Date(g.co).getTime() > Date.now())
       .sort((a,b)=>new Date(a.co)-new Date(b.co));
     const present=new Set(allLive.map(g=>etDate(g.co)));
     slateOpts=[{date:todayET,label:'Today'},{date:tomorrowET,label:'Tomorrow'}].filter(o=>present.has(o.date));
