@@ -403,7 +403,7 @@ function best(g, side, suspectV){
   }
   return b;
 }
-// TrueLine: sharp-weighted, power-de-vigged "true" probability — a different, sharper
+// TRUELINE: sharp-weighted, power-de-vigged "true" probability — a different, sharper
 // number than the Board's flat median. Anchors on sharp sources; corrects fav-longshot bias.
 const SHARP_W = { pin:3.0, kalshi:2.0, poly:2.0, dk:0.5, fd:0.5, mgm:0.5, czr:0.5 };
 function devigPower(q1,q2){ let lo=0.3,hi=6; for(let i=0;i<44;i++){ const k=(lo+hi)/2; (Math.pow(q1,k)+Math.pow(q2,k)>1)?lo=k:hi=k; } const k=(lo+hi)/2; return [Math.pow(q1,k),Math.pow(q2,k)]; }
@@ -429,10 +429,10 @@ const PRODUCTS = [
     title:'Feel the money move.', sub:'Where sharp action is moving the market in real time — and whether it’s real steam or just noise.' },
   { id:'tail',     ico:'⊳', nm:'Tail', ds:'Smart-money wallets', eyebrow:'TAIL',
     title:'Ride with the winners.', sub:'The most profitable wallets on Polymarket, what they’re backing right now, and what it’s cost to fade them.' },
-  { id:'trueline', ico:'⌁', nm:'TrueLine', ds:'Our model. Our call.', eyebrow:'TRUELINE',
+  { id:'trueline', ico:'⌁', nm:'TRUELINE', ds:'Our model. Our call.', eyebrow:'TRUELINE',
     title:'Our number on every game.', sub:'One honest line per game to measure the market against — and the calls we’re actually making, with a transparent record.' },
-  { id:'alpha',    ico:'✦', nm:'Project Alpha', ds:'Our official plays', eyebrow:'PROJECT ALPHA',
-    title:'The plays we’re making.', sub:'Not data to interpret — our actual positions. When Alpha names a play, we’re saying bet it, and our record is on the line.' },
+  { id:'alpha',    ico:'✦', nm:'PICK VAULT', ds:'Our official plays', eyebrow:'PICK VAULT',
+    title:'The plays we’re making.', sub:'Not data to interpret — our actual positions. When PICK VAULT names a play, we’re saying bet it, and our record is on the line.' },
 ];
 let current='board';
 
@@ -838,7 +838,7 @@ function renderTrueline(){
 
     <div class="phead" style="border:0;padding:2px 2px 14px"><h3>Our calls</h3><div class="pright">${slateToggleHTML()}<div class="meta">${plays} play${plays===1?'':'s'} \u00b7 ${calls.length-plays} pass</div></div></div>
     <div class="picks">${calls.map(pickCard).join('')}</div>
-    <div class="disc">TrueLine is our sharp-weighted, vig-free line \u2014 anchored on the sharpest sources (Pinnacle, Kalshi, Polymarket) and de-vigged with the power method to correct favorite\u2013longshot bias. A call is named only where the best market price beats our line past our threshold; otherwise we pass. It measures the market against the sharp money \u2014 it is not an independent prediction.</div>`;
+    <div class="disc">TRUELINE is our sharp-weighted, vig-free line \u2014 anchored on the sharpest sources (Pinnacle, Kalshi, Polymarket) and de-vigged with the power method to correct favorite\u2013longshot bias. A call is named only where the best market price beats our line past our threshold; otherwise we pass. It measures the market against the sharp money \u2014 it is not an independent prediction.</div>`;
 }
 
 function pickCard(c){
@@ -851,7 +851,7 @@ function pickCard(c){
     </div>
     <div class="call">${pass?'<span style="color:var(--mut-2)">No play \u2014 market efficient</span>':`<span>${c.pick.team}</span> ${pxLabel(c.pick.b.v,c.pick.b.price)} \u00b7 ${VEN[c.pick.b.v].label}`}</div>
     <div class="lines">
-      <div class="x"><div class="l">TrueLine</div><div class="v">${(c.pick.tp*100).toFixed(0)}%</div></div>
+      <div class="x"><div class="l">TRUELINE</div><div class="v">${(c.pick.tp*100).toFixed(0)}%</div></div>
       <div class="x"><div class="l">Best price</div><div class="v">${pxLabel(c.pick.b.v,c.pick.b.price)}</div></div>
       <div class="x"><div class="l">Edge</div><div class="v ${pass?'':'edge'}">${c.pick.edge>0?'+':''}${c.pick.edge.toFixed(1)}%</div></div>
     </div>
@@ -860,7 +860,7 @@ function pickCard(c){
       <div class="bar"><i style="width:${strength}%"></i></div>
     </div>
     <div class="note">${pass
-      ? `TrueLine has ${c.g.away.ab} ${(c.tl.away*100).toFixed(0)}% / ${c.g.home.ab} ${(c.tl.home*100).toFixed(0)}% \u2014 no side's best price clears our edge threshold, so we pass.`
+      ? `TRUELINE has ${c.g.away.ab} ${(c.tl.away*100).toFixed(0)}% / ${c.g.home.ab} ${(c.tl.home*100).toFixed(0)}% \u2014 no side's best price clears our edge threshold, so we pass.`
       : `Our line makes ${c.pick.team} ${(c.pick.tp*100).toFixed(0)}% (fair price ${americanFromProb(c.pick.tp)}). Best available is ${pxLabel(c.pick.b.v,c.pick.b.price)} at ${VEN[c.pick.b.v].label} \u2014 a +${c.pick.edge.toFixed(1)}% edge over our line.`}</div>
   </div>`;
 }
@@ -956,7 +956,7 @@ function renderAlpha(){
     <div class="c"><div class="l">Plays graded</div><div class="v">0</div></div>
     <div class="c"><div class="l">Tracking since</div><div class="v" style="font-size:15px">${today}</div></div>
   </div>
-  <div class="tl-note">Alpha's official plays, graded on closing-line value and ROI once games settle. The record starts empty and earns every number.</div>`;
+  <div class="tl-note">PICK VAULT's official plays, graded on closing-line value and ROI once games settle. The record starts empty and earns every number.</div>`;
   let body;
   if(alphaStatus==='loading'||alphaStatus==='idle') body=`<div class="panel"><div style="padding:40px 24px;text-align:center;color:var(--mut);line-height:1.6">Running the model on today's slate — pulling probable starters and season stats, then simulating every game…</div></div>`;
   else if(alphaStatus==='error') body=`<div class="panel"><div style="padding:34px 24px;color:var(--mut);line-height:1.6">Couldn't reach MLB StatsAPI from the browser (<span class="mono">${alphaErr}</span>). If it's a CORS block, the fix is a small proxy — same as we'd have done for Tail.</div></div>`;
@@ -965,7 +965,7 @@ function renderAlpha(){
   else {
     const leans=alphaTop.length-alphaPlayCount;
     const head=`<div class="phead" style="border:0;padding:2px 2px 14px"><h3>Today's top spots</h3><div class="meta">${alphaPlayCount} play${alphaPlayCount===1?'':'s'} · ${leans} lean${leans===1?'':'s'} · ${alphaMatched} modeled</div></div>`;
-    body=head+`<div class="picks">${alphaTop.map(alphaPlayCard).join('')}</div>`+`<div class="disc">Alpha runs an independent MLB run-projection model (offense × opposing starter & bullpen × park, simulated ~${(AL_N/1000)}k times per game) and surfaces its top spots vs the sharp market line. A PLAY is a real 3%+ edge with a confirmed starter; a LEAN is a smaller edge we'd watch, not bet. Inputs are free public stats — the honest ceiling is that public data rarely beats a sharp close, so real edges stay small. Judge by CLV over a large sample, not any single night.</div>`;
+    body=head+`<div class="picks">${alphaTop.map(alphaPlayCard).join('')}</div>`+`<div class="disc">PICK VAULT runs an independent MLB run-projection model (offense × opposing starter & bullpen × park, simulated ~${(AL_N/1000)}k times per game) and surfaces its top spots vs the sharp market line. A PLAY is a real 3%+ edge with a confirmed starter; a LEAN is a smaller edge we'd watch, not bet. Inputs are free public stats — the honest ceiling is that public data rarely beats a sharp close, so real edges stay small. Judge by CLV over a large sample, not any single night.</div>`;
   }
   document.getElementById('view-alpha').innerHTML=score+body;
 }
