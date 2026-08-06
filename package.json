@@ -2,9 +2,10 @@
   "name": "bluprnt",
   "version": "0.1.0",
   "private": true,
-  "description": "BLUPRNT — marketing site + app (static) plus the MLB live-data poller (Vercel function).",
+  "description": "BLUPRNT \u2014 marketing site + app (static) plus the MLB live-data poller (Vercel function).",
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0"
+    "@supabase/supabase-js": "^2.45.0",
+    "stripe": "^17.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

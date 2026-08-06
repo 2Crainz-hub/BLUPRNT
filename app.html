@@ -292,7 +292,7 @@
     <nav class="nav" id="nav"></nav>
     <div class="side-foot" id="uFoot">
       <div class="av"></div>
-      <div><div class="who" id="uWho">Member</div><div class="plan" id="uPlan">Free plan</div></div>
+      <div><div class="who" id="uWho">Member</div><div class="plan" id="uPlan">Basic plan</div></div>
     </div>
   </aside>
 
@@ -329,13 +329,14 @@ const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
   const { data:{ session } } = await _auth.getSession();
   if(!session){ location.replace('/'); return; }
   const email = session.user.email || '';
+  window._uid = session.user.id; window._email = email;
   const who=document.getElementById('uWho'), plan=document.getElementById('uPlan');
   if(who) who.textContent = (email.split('@')[0]) || 'Member';
   try{
     const r = await fetch(`${_SB_URL}/rest/v1/profiles?select=tier&id=eq.${session.user.id}`,
       { headers:{ apikey:_SB_ANON, Authorization:`Bearer ${session.access_token}` } });
     const rows = await r.json(); const tier = (rows && rows[0] && rows[0].tier) || 'free';
-    if(plan) plan.textContent = tier.charAt(0).toUpperCase()+tier.slice(1)+' plan';
+    if(plan) plan.textContent = (TIER_NAME[tier]||'Basic')+' plan';
     window._tier = tier;
   }catch(e){ window._tier='free'; }
   applyTier();
@@ -437,16 +438,19 @@ let current='board';
 
 // ---- tier gating ----
 const TIER_RANK={free:0,basic:1,advanced:2};
+const TIER_NAME={free:'Basic',basic:'Pro',advanced:'Elite'};
+const PAY={basic:'https://buy.stripe.com/eVq5kE4XC5yleEadsA9fW00',advanced:'https://buy.stripe.com/00weVeeyc1i5brY1JS9fW01'};
+function payUrl(tier){ const b=PAY[tier]||PAY.basic; let q='client_reference_id='+encodeURIComponent(window._uid||''); if(window._email) q+='&prefilled_email='+encodeURIComponent(window._email); return b+'?'+q; }
 const MODULE_TIER={board:0,wave:1,tail:1,trueline:2,alpha:2};
 const tierAllows=id=>(TIER_RANK[window._tier]??0) >= (MODULE_TIER[id]??0);
 function paywallHTML(id){
-  const p=PRODUCTS.find(x=>x.id===id), adv=MODULE_TIER[id]>=2, tier=adv?'Advanced':'Basic', price=adv?'$79':'$29';
+  const p=PRODUCTS.find(x=>x.id===id), adv=MODULE_TIER[id]>=2, tier=adv?'Elite':'Pro', price=adv?'$79':'$29';
   return `<div class="panel"><div class="paywall">
     <div class="pw-lock">\uD83D\uDD12</div>
     <h3>${p.nm} is ${adv?'an':'a'} ${tier} feature</h3>
     <p>${p.sub}</p>
     <div class="pw-price">Unlock with <b>${tier}</b> \u00b7 ${price}/mo</div>
-    <button class="pw-btn" onclick="location.href='/#pricing'">See plans</button>
+    <button class="pw-btn" onclick="location.href=payUrl('${adv?'advanced':'basic'}')">Upgrade to ${tier}</button>
   </div></div>`;
 }
 function applyTier(){ buildNav(); buildRail(); route(current); }
@@ -495,7 +499,7 @@ function renderBoard(){
   const arbs=findArbs();
   const free=(TIER_RANK[window._tier]??0)<1;
   const shown=free?games.slice(0,3):games;
-  const freeBanner = free ? `<div class="freebar">You're on the <b>Free</b> plan \u2014 showing ${Math.min(3,games.length)} of ${games.length} games. <a href="/#pricing">Upgrade to Basic ($29/mo)</a> for the full board, Tail, and live movement.</div>` : '';
+  const freeBanner = free ? `<div class="freebar">You're on <b>Basic</b> \u2014 showing ${Math.min(3,games.length)} of ${games.length} games. <a href="${payUrl('basic')}">Upgrade to Pro ($29/mo)</a> for the full board, Tail, and live movement.</div>` : '';
   const arbSection = (free||!arbs.length) ? '' : `
     <div class="arb">
       <div class="arb-head">
