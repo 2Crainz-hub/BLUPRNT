@@ -326,7 +326,7 @@ const _SB_URL='https://qedwppnqudszajljyujd.supabase.co';
 const _SB_ANON='sb_publishable_WlC8l0sXhS_XD_rhcuUA_Q_BQEohYWQ';
 const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
 (async () => {
-  const { data:{ session } } = await _auth.getSession();
+  const { data:{ session } } = await _auth.auth.getSession();
   if(!session){ location.replace('/'); return; }
   const email = session.user.email || '';
   window._uid = session.user.id; window._email = email;
@@ -341,7 +341,7 @@ const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
   }catch(e){ window._tier='free'; }
   applyTier();
   const foot=document.getElementById('uFoot');
-  if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', async ()=>{ if(confirm('Sign out?')){ await _auth.signOut(); location.replace('/'); } }); }
+  if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', async ()=>{ if(confirm('Sign out?')){ await _auth.auth.signOut(); location.replace('/'); } }); }
 })();
 //=================================================================
 //  BLUPRNT — shared engine + mock slate
