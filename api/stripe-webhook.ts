@@ -53,12 +53,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object as Stripe.Checkout.Session;
       const userId = s.client_reference_id; // our Supabase user id, passed on the payment link
+      const email = s.customer_details?.email || undefined; // fallback identifier
       const customer = typeof s.customer === 'string' ? s.customer : s.customer?.id;
       const items = await stripe.checkout.sessions.listLineItems(s.id, { limit: 1 });
       const product = items.data[0]?.price?.product as string | undefined;
       const tier = product ? PRODUCT_TIER[product] : undefined;
-      if (userId && tier) {
-        await patchProfile(`id=eq.${userId}`, { tier, stripe_customer: customer });
+      if (tier) {
+        if (userId) {
+          await patchProfile(`id=eq.${userId}`, { tier, stripe_customer: customer });
+        } else if (email) {
+          // no user id on the link -> match by the email used at checkout
+          await patchProfile(`email=eq.${encodeURIComponent(email)}`, { tier, stripe_customer: customer });
+        }
       }
     }
 
