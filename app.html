@@ -56,6 +56,7 @@
   .navitem.locked{opacity:.62}
   .tag.lock{background:none;padding:0;font-size:13px}
   .freebar{background:rgba(52,217,192,.08);border:1px solid rgba(52,217,192,.3);border-radius:12px;padding:13px 17px;font-size:13px;color:var(--txt-2);margin-bottom:16px;line-height:1.5}
+  .board-note{font-size:12px;color:var(--txt-3);text-align:center;padding:16px 4px 4px}
   .freebar a{color:var(--teal);font-weight:700;text-decoration:none}
   .paywall{padding:52px 28px;text-align:center;max-width:460px;margin:0 auto}
   .paywall .pw-lock{font-size:34px;margin-bottom:16px}
@@ -524,6 +525,7 @@ function renderBoard(){
         </tr></thead>
         <tbody>${shown.map(boardRow).join('')}</tbody>
       </table>
+      <div class="board-note">Pregame lines only — a game leaves the board once first pitch is thrown.</div>
     </div>
     <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
 
