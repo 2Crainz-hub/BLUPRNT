@@ -499,7 +499,7 @@ function renderBoard(){
   const arbs=findArbs();
   const free=(TIER_RANK[window._tier]??0)<1;
   const shown=free?games.slice(0,3):games;
-  const freeBanner = free ? `<div class="freebar">You're on <b>Basic</b> \u2014 showing ${Math.min(3,games.length)} of ${games.length} games. <a href="${payUrl('basic')}">Upgrade to Pro ($29/mo)</a> for the full board, Tail, and live movement.</div>` : '';
+  const freeBanner = free ? `<div class="freebar">You're on <b>Basic</b> \u2014 showing ${Math.min(3,games.length)} of ${games.length} games that haven't started yet. <a href="${payUrl('basic')}">Upgrade to Pro ($29/mo)</a> for the full board, Tail, and live movement.</div>` : '';
   const arbSection = (free||!arbs.length) ? '' : `
     <div class="arb">
       <div class="arb-head">
