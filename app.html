@@ -539,6 +539,7 @@ function renderBoard(){
       <div class="board-note">We list every MLB game until it starts — a game leaves the board at first pitch (pregame lines only, not in-progress games). So a shorter list late at night just means the rest are already underway, not that any are missing.</div>
     </div>
     <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
+  wireSlateToggle();
 
   const b=document.getElementById('budget');
   if(b) b.addEventListener('input',()=>{ budget=Math.max(0,+b.value||0); document.querySelectorAll('[data-arb]').forEach(c=>updateArb(c)); });
@@ -851,6 +852,7 @@ function renderTrueline(){
     <div class="phead" style="border:0;padding:2px 2px 14px"><h3>Our calls</h3><div class="pright">${slateToggleHTML()}<div class="meta">${plays} play${plays===1?'':'s'} \u00b7 ${calls.length-plays} pass</div></div></div>
     <div class="picks">${calls.map(pickCard).join('')}</div>
     <div class="disc">TRUELINE is our sharp-weighted, vig-free line \u2014 anchored on the sharpest sources (Pinnacle, Kalshi, Polymarket) and de-vigged with the power method to correct favorite\u2013longshot bias. A call is named only where the best market price beats our line past our threshold; otherwise we pass. It measures the market against the sharp money \u2014 it is not an independent prediction.</div>`;
+  wireSlateToggle();
 }
 
 function pickCard(c){
@@ -1057,7 +1059,7 @@ function applySlate(){
   const day=slateOpts[Math.min(slateIdx,slateOpts.length-1)].date;
   const list=allLive.filter(g=>etDate(g.co)===day).slice(0,24);
   games.length=0; list.forEach(g=>games.push(g));
-  renderBoard(); renderTrueline(); wireSlateToggle();
+  renderBoard(); renderTrueline();
 }
 loadLive();
 </script>
