@@ -219,7 +219,9 @@
   .tail tbody tr{cursor:pointer;transition:background .12s}
   .tail tbody tr:hover,.tail tbody tr.sel{background:rgba(255,255,255,.04)}
   .tail .rk{font-weight:800;font-size:16px;color:var(--txt-2);width:30px}
-  .tail .wh{font-weight:700;font-size:14.5px;color:var(--txt)}
+  .tail .wh{font-weight:700;font-size:14.5px;color:var(--txt);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tail td:nth-child(2){max-width:150px}
+  @media (max-width:480px){ .tail .wh{max-width:92px} .tail td:nth-child(2){max-width:92px} }
   .tail .ad{font-size:11px;color:var(--txt-3);font-weight:500}
   .tail .pos{color:var(--teal);font-weight:800}.tail .neg{color:var(--coral);font-weight:800}
   .poslist{padding:6px 0}
@@ -809,7 +811,7 @@ function renderTail(){
   document.getElementById('walletRows').innerHTML = tailWallets.map((w,i)=>`
     <tr data-wal="${i}" class="${i===tailSel?'sel':''}">
       <td class="rk">${i+1}</td>
-      <td><div class="wh">${w.name}</div><div class="ad mono">${w.addr}</div></td>
+      <td><div class="wh" title="${w.name}">${w.name}</div><div class="ad mono">${w.addr}</div></td>
       <td class="${w.pnl>=0?'pos':'neg'}">${tailMoney(w.pnl)}</td>
       <td class="hide-sm ${w.roi>=0?'pos':''}">${w.roi>=0?'+':''}${w.roi.toFixed(1)}%</td>
       <td>${w.picks.length}</td>
