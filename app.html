@@ -70,6 +70,10 @@
   .side-foot .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--teal));flex-shrink:0;border:2px solid rgba(255,255,255,.14)}
   .side-foot .who{font-size:13.5px;font-weight:700;color:var(--txt)}
   .side-foot .plan{font-size:10.5px;font-weight:600;color:var(--teal)}
+  .side-links{display:flex;flex-wrap:wrap;gap:4px 8px;padding:12px 2px 2px;font-size:11px;align-items:center}
+  .side-links a{color:var(--txt-3);text-decoration:none;font-weight:600}
+  .side-links a:hover{color:var(--teal)}
+  .side-links span{color:var(--txt-3);opacity:.45}
   .main{flex:1;min-width:0;padding:clamp(20px,3vw,40px) clamp(20px,3.4vw,48px) 64px}
 
   /* topbar */
@@ -295,6 +299,12 @@
       <div class="av"></div>
       <div><div class="who" id="uWho">Member</div><div class="plan" id="uPlan">Basic plan</div></div>
     </div>
+    <div class="side-links">
+      <a href="mailto:support@getbluprnt.com">Support</a><span>·</span>
+      <a href="https://billing.stripe.com/p/login/eVq5kE4XC5yleEadsA9fW00" target="_blank" rel="noopener">Billing</a><span>·</span>
+      <a href="/terms" target="_blank">Terms</a><span>·</span>
+      <a href="/privacy" target="_blank">Privacy</a>
+    </div>
   </aside>
 
   <!-- main -->
@@ -400,6 +410,7 @@ function best(g, side, suspectV){
   for(const v of VENUES){
     if(!g.v[v] || suspectV.includes(v)) continue;
     const c=cost(v, g.v[v][side]);
+    if(!(c>0 && c<1)) continue;                 // ignore invalid/resolved prices (0¢/100¢)
     if(!b || c<b.cost) b={v, price:g.v[v][side], cost:c};
   }
   return b;
@@ -525,7 +536,7 @@ function renderBoard(){
         </tr></thead>
         <tbody>${shown.map(boardRow).join('')}</tbody>
       </table>
-      <div class="board-note">Pregame lines only — a game leaves the board once first pitch is thrown.</div>
+      <div class="board-note">We list every MLB game until it starts — a game leaves the board at first pitch (pregame lines only, not in-progress games). So a shorter list late at night just means the rest are already underway, not that any are missing.</div>
     </div>
     <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
 
@@ -1026,9 +1037,12 @@ async function loadLive(){
               time:fmtWhen(m.commence), v:{} };
         live.set(q.game_id, g);
       }
-      g.v[key] = isExch(key)
-        ? { away:impliedCents(q.away_price), home:impliedCents(q.home_price) }
-        : { away:q.away_price, home:q.home_price };
+      if(isExch(key)){
+        const aw=impliedCents(q.away_price), hm=impliedCents(q.home_price);
+        if(aw>0 && aw<100 && hm>0 && hm<100) g.v[key]={ away:aw, home:hm };   // skip 0¢/100¢ (resolved/empty markets)
+      } else if(q.away_price && q.home_price){
+        g.v[key]={ away:q.away_price, home:q.home_price };
+      }
     }
     // Build the full upcoming slate, then expose Today / Tomorrow as a toggle.
     const todayET = etDate(new Date().toISOString());

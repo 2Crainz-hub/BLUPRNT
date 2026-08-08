@@ -322,7 +322,13 @@
       color: rgba(255,255,255,.8); font-size: 12.5px; letter-spacing: .26em; text-transform: uppercase; font-weight: 600;
     }
 
-  </style>
+    .site-foot{border-top:1px solid rgba(255,255,255,.08);padding:44px 24px 52px;text-align:center;max-width:840px;margin:0 auto}
+  .foot-links{display:flex;gap:26px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+  .foot-links a{color:rgba(255,255,255,.75);text-decoration:none;font-size:14px;font-weight:600}
+  .foot-links a:hover{color:#34D9C0}
+  .foot-disc{font-size:12px;color:rgba(255,255,255,.42);line-height:1.6;max-width:660px;margin:0 auto 14px}
+  .foot-copy{font-size:12px;color:rgba(255,255,255,.35)}
+</style>
 </head>
 <body>
   <main class="stage">
@@ -409,6 +415,7 @@
           <div class="auth-field" id="nameField" style="display:none"><input type="text" id="authName" placeholder="Full name" /></div>
           <div class="auth-field"><input type="email" id="authEmail" placeholder="Email address" /></div>
           <div class="auth-field"><input type="password" id="authPassword" placeholder="Password" /></div>
+          <div style="text-align:right;margin:-8px 0 14px"><button class="link-inline" id="authForgot" type="button" style="font-size:13px">Forgot password?</button></div>
           <button class="btn-primary" id="authSubmit">Log in</button>
           <div class="auth-divider"><span>or</span></div>
           <button class="btn-google">
@@ -511,6 +518,12 @@
       </div>
     </section>
   </main>
+
+  <footer class="site-foot">
+    <div class="foot-links"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@getbluprnt.com">Support</a></div>
+    <div class="foot-disc">BLUPRNT provides sports data and analytics for informational and entertainment purposes only — not betting or financial advice, and not a guarantee of any outcome. 21+ where applicable. Please gamble responsibly. If you or someone you know has a gambling problem, call or text 1-800-522-4700.</div>
+    <div class="foot-copy">© 2026 BLUPRNT · getbluprnt.com</div>
+  </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -850,6 +863,15 @@ if (googleBtn) googleBtn.addEventListener('click', async () => {
   showErr('');
   const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin+'/app' } });
   if(error) showErr(error.message);
+});
+
+const authForgot = document.getElementById('authForgot');
+if (authForgot) authForgot.addEventListener('click', async () => {
+  const email=(document.getElementById('authEmail').value||'').trim();
+  const setMsg=(t,ok)=>{ authErr.style.color=ok?'#34D9C0':'#ff7a7a'; authErr.textContent=t; authErr.style.display='block'; };
+  if(!email){ setMsg('Enter your email above first, then tap "Forgot password?"', false); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin+'/reset' });
+  setMsg(error ? error.message : 'Reset link sent — check your email to set a new password.', !error);
 });
 
 // ---- ambient mind-map backdrop (no labels) ----
