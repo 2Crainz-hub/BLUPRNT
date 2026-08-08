@@ -282,7 +282,25 @@
       padding-bottom:calc(8px + env(safe-area-inset-bottom));border-radius:24px;
       background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
       border:1px solid var(--bdr);box-shadow:0 20px 54px -22px rgba(0,0,0,.9)}
+    .macct-btn{display:flex}
   }
+  .macct-btn{display:none;position:fixed;top:calc(14px + env(safe-area-inset-top));right:14px;z-index:61;
+    width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.14);cursor:pointer;padding:0;
+    background:linear-gradient(135deg,var(--coral),var(--teal));align-items:center;justify-content:center;
+    box-shadow:0 10px 26px -10px rgba(0,0,0,.7)}
+  .macct-menu{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top));right:14px;z-index:61;
+    width:230px;background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+    border:1px solid var(--bdr);border-radius:16px;padding:14px;box-shadow:0 20px 54px -18px rgba(0,0,0,.85);
+    flex-direction:column;gap:9px}
+  .macct-menu.open{display:flex}
+  .macct-who{display:flex;align-items:center;gap:10px;padding-bottom:11px;border-bottom:1px solid var(--bdr)}
+  .macct-who .av{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--coral),var(--teal));border:2px solid rgba(255,255,255,.14)}
+  .macct-who .who{font-size:13.5px;font-weight:700;color:var(--txt)}
+  .macct-who .plan{font-size:10.5px;font-weight:600;color:var(--teal)}
+  .macct-menu a{color:var(--txt-2);text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 0}
+  .macct-menu a:hover{color:var(--teal)}
+  .macct-signout{margin-top:5px;background:rgba(255,92,92,.12);border:1px solid rgba(255,92,92,.35);color:#ff8f8f;
+    border-radius:10px;padding:9px;font-size:13px;font-weight:700;cursor:pointer}
 
 </style>
 </head>
@@ -312,6 +330,17 @@
       <a href="/privacy" target="_blank">Privacy</a>
     </div>
   </aside>
+
+  <!-- mobile-only account button + menu (sidebar is hidden on mobile) -->
+  <button class="macct-btn" id="macctBtn" aria-label="Account"><span id="mAv"></span></button>
+  <div class="macct-menu" id="macctMenu">
+    <div class="macct-who"><div class="av"></div><div><div class="who" id="mWho">Member</div><div class="plan" id="mPlan">Basic plan</div></div></div>
+    <a href="mailto:getbluprnt@gmail.com">Support</a>
+    <a href="https://billing.stripe.com/p/login/eVq5kE4XC5yleEadsA9fW00" target="_blank" rel="noopener">Billing</a>
+    <a href="/terms" target="_blank">Terms</a>
+    <a href="/privacy" target="_blank">Privacy</a>
+    <button class="macct-signout" id="macctSignout">Sign out</button>
+  </div>
 
   <!-- main -->
   <main class="main">
@@ -348,17 +377,28 @@ const _auth = window.supabase.createClient(_SB_URL, _SB_ANON);
   const email = session.user.email || '';
   window._uid = session.user.id; window._email = email;
   const who=document.getElementById('uWho'), plan=document.getElementById('uPlan');
+  const mWho=document.getElementById('mWho'), mPlan=document.getElementById('mPlan');
   if(who) who.textContent = (email.split('@')[0]) || 'Member';
+  if(mWho) mWho.textContent = (email.split('@')[0]) || 'Member';
   try{
     const r = await fetch(`${_SB_URL}/rest/v1/profiles?select=tier&id=eq.${session.user.id}`,
       { headers:{ apikey:_SB_ANON, Authorization:`Bearer ${session.access_token}` } });
     const rows = await r.json(); const tier = (rows && rows[0] && rows[0].tier) || 'free';
     if(plan) plan.textContent = (TIER_NAME[tier]||'Basic')+' plan';
+    if(mPlan) mPlan.textContent = (TIER_NAME[tier]||'Basic')+' plan';
     window._tier = tier;
   }catch(e){ window._tier='free'; }
   applyTier();
+  const doSignOut = async () => { if(confirm('Sign out?')){ await _auth.auth.signOut(); location.replace('/'); } };
   const foot=document.getElementById('uFoot');
-  if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', async ()=>{ if(confirm('Sign out?')){ await _auth.auth.signOut(); location.replace('/'); } }); }
+  if(foot){ foot.style.cursor='pointer'; foot.title='Sign out'; foot.addEventListener('click', doSignOut); }
+  const macctBtn=document.getElementById('macctBtn'), macctMenu=document.getElementById('macctMenu');
+  if(macctBtn && macctMenu){
+    macctBtn.addEventListener('click', e=>{ e.stopPropagation(); macctMenu.classList.toggle('open'); });
+    document.addEventListener('click', e=>{ if(!macctMenu.contains(e.target) && e.target!==macctBtn) macctMenu.classList.remove('open'); });
+  }
+  const macctSignout=document.getElementById('macctSignout');
+  if(macctSignout) macctSignout.addEventListener('click', doSignOut);
 })();
 //=================================================================
 //  BLUPRNT — shared engine + mock slate
