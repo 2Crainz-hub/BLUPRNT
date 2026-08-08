@@ -844,7 +844,6 @@ function truelineCalls(){
 }
 
 function renderTrueline(){
-  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const calls=truelineCalls();
   const plays=calls.filter(c=>c.conv!=='pass').length;
   document.getElementById('view-trueline').innerHTML = `
@@ -962,14 +961,7 @@ function alphaPlayCard(x){
 }
 
 function renderAlpha(){
-  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const score=`<div class="record">
-    <div class="c"><div class="l">CLV</div><div class="v" style="color:var(--txt-3)">—</div></div>
-    <div class="c"><div class="l">ROI</div><div class="v" style="color:var(--txt-3)">—</div></div>
-    <div class="c"><div class="l">Plays graded</div><div class="v">0</div></div>
-    <div class="c"><div class="l">Tracking since</div><div class="v" style="font-size:15px">${today}</div></div>
-  </div>
-  <div class="tl-note">PICK VAULT's official plays, graded on closing-line value and ROI once games settle. The record starts empty and earns every number.</div>`;
+  const notice=`<div class="tl-note">PICK VAULT is our official plays — a tracked record (CLV &amp; ROI) is coming soon.</div>`;
   let body;
   if(alphaStatus==='loading'||alphaStatus==='idle') body=`<div class="panel"><div style="padding:40px 24px;text-align:center;color:var(--mut);line-height:1.6">Running the model on today's slate — pulling probable starters and season stats, then simulating every game…</div></div>`;
   else if(alphaStatus==='error') body=`<div class="panel"><div style="padding:34px 24px;color:var(--mut);line-height:1.6">Couldn't reach MLB StatsAPI from the browser (<span class="mono">${alphaErr}</span>). If it's a CORS block, the fix is a small proxy — same as we'd have done for Tail.</div></div>`;
@@ -980,7 +972,7 @@ function renderAlpha(){
     const head=`<div class="phead" style="border:0;padding:2px 2px 14px"><h3>Today's top spots</h3><div class="meta">${alphaPlayCount} play${alphaPlayCount===1?'':'s'} · ${leans} lean${leans===1?'':'s'} · ${alphaMatched} modeled</div></div>`;
     body=head+`<div class="picks">${alphaTop.map(alphaPlayCard).join('')}</div>`+`<div class="disc">PICK VAULT runs an independent MLB run-projection model (offense × opposing starter & bullpen × park, simulated ~${(AL_N/1000)}k times per game) and surfaces its top spots vs the sharp market line. A PLAY is a real 3%+ edge with a confirmed starter; a LEAN is a smaller edge we'd watch, not bet. Inputs are free public stats — the honest ceiling is that public data rarely beats a sharp close, so real edges stay small. Judge by CLV over a large sample, not any single night.</div>`;
   }
-  document.getElementById('view-alpha').innerHTML=score+body;
+  document.getElementById('view-alpha').innerHTML=notice+body;
 }
 
 //=================================================================
