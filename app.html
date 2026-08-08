@@ -160,6 +160,10 @@
   .cmp{white-space:nowrap}
   .cmpbtn{font-size:11px;font-weight:700;color:var(--txt-3);border:1px solid var(--bdr-2);border-radius:8px;padding:6px 11px;display:inline-block}
   .grow:hover .cmpbtn{color:var(--txt);border-color:var(--txt-3)}
+  @media (max-width:480px){
+    .board th,.board td{padding:12px 8px}
+    .cmpbtn{font-size:10px;padding:5px 8px}
+  }
   .gm-modal{position:fixed;inset:0;background:rgba(5,6,8,.72);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
   .gm-modal.on{display:flex}
   .gm-card{position:relative;width:min(520px,94vw);max-height:88vh;overflow:auto;background:#111318;border:1px solid var(--bdr);border-radius:18px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
@@ -530,12 +534,14 @@ function renderBoard(){
     ${freeBanner}
     <div class="panel">
       <div class="phead"><h3>The board · MLB moneyline</h3><div class="pright">${slateToggleHTML()}<span class="info" data-tip="This board doesn't pick winners. For each team it shows the best available price and which book has it — tap any game to compare all 7 books side by side. 'Fair' is the vig-free consensus price, so you can see whether even the best number is genuinely good value.">i</span></div></div>
+      <div style="overflow-x:auto">
       <table class="board">
         <thead><tr>
           <th>Game</th><th>Away</th><th>Home</th><th></th>
         </tr></thead>
         <tbody>${shown.map(boardRow).join('')}</tbody>
       </table>
+      </div>
       <div class="board-note">We list every MLB game until it starts — a game leaves the board at first pitch (pregame lines only, not in-progress games). So a shorter list late at night just means the rest are already underway, not that any are missing.</div>
     </div>
     <div id="gmodal" class="gm-modal"><div class="gm-card"></div></div>`;
@@ -794,7 +800,7 @@ function renderTail(){
         <tbody id="walletRows"></tbody></table>
         </div>
       </div>
-      <div class="panel" style="overflow:hidden">
+      <div class="panel" style="overflow:hidden" id="tailPicksPanel">
         <div class="phead"><h3 id="tailWho"></h3><div class="meta" id="tailMeta"></div></div>
         <div class="poslist" id="tailPos"></div>
       </div>
@@ -808,7 +814,11 @@ function renderTail(){
       <td class="hide-sm ${w.roi>=0?'pos':''}">${w.roi>=0?'+':''}${w.roi.toFixed(1)}%</td>
       <td>${w.picks.length}</td>
     </tr>`).join('');
-  document.querySelectorAll('[data-wal]').forEach(el=>el.addEventListener('click',()=>{ tailSel=+el.dataset.wal; renderTail(); }));
+  document.querySelectorAll('[data-wal]').forEach(el=>el.addEventListener('click',()=>{
+    tailSel=+el.dataset.wal; renderTail();
+    const panel=document.getElementById('tailPicksPanel');
+    if(panel && window.innerWidth<=1020) panel.scrollIntoView({behavior:'smooth', block:'start'});
+  }));
   const w=tailWallets[tailSel]; if(!w) return;
   document.getElementById('tailWho').textContent=w.name;
   document.getElementById('tailMeta').textContent=`${w.addr} · $${(w.vol/1e6).toFixed(1)}M volume · ${w.picks.length} live MLB bet${w.picks.length>1?'s':''}`;
