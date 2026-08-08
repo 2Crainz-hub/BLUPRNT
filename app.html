@@ -1067,6 +1067,11 @@ async function sbGet(path){
 async function loadLive(){
   if(!SB_ANON || SB_ANON.indexOf('PASTE_')===0) return;          // not configured -> stay on demo
   try{
+    // On-demand refresh: ask the poller to check freshness and pull live data if it's
+    // stale (skips OddsPapi entirely, near-instant, if someone already refreshed recently).
+    try{ await fetch('/api/poll-mlb'); }
+    catch(e){ console.warn('[BLUPRNT] poll-mlb trigger failed, using whatever\u2019s in Supabase', e); }
+
     const [meta, quotes] = await Promise.all([
       sbGet('mlb_games?select=id,away_team,home_team,commence'),
       sbGet('mlb_quotes?select=game_id,venue,away_price,home_price'),

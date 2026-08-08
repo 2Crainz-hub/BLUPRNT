@@ -1,8 +1,15 @@
-// api/poll-mlb.ts — scheduled poller for BLUPRNT / THE BOARD (MLB moneylines).
+// api/poll-mlb.ts — on-demand poller for BLUPRNT / THE BOARD (MLB moneylines).
 //
-// OddsPapi's /v4/odds-by-tournaments returns ONE bookmaker per call, so we loop the
-// books in BOOKMAKERS, merge their quotes per game, run the devig/arb engine, and
-// write a board snapshot to Supabase. Verified against a live Pinnacle pull (2026-06-28):
+// Called by the app the moment someone opens it (not a fixed-interval cron). It checks
+// how old the data already sitting in Supabase is: if it's fresher than STALE_MS, it
+// skips OddsPapi entirely and returns instantly (cost: 0 calls). If it's stale, it does
+// one real refresh — 2 OddsPapi calls total (team names, then ALL bookmakers in a single
+// combined odds call) — writes to Supabase, and returns. `?force=1` bypasses the
+// freshness check (handy for manual testing).
+//
+// OddsPapi's /v4/odds-by-tournaments accepts a comma-separated `bookmakers` list and
+// returns every requested book in one response — so all 7 books come back in ONE call,
+// not one call per book. Verified against a live Pinnacle pull (2026-06-28):
 //   - the moneyline market's bookmakerMarketId ends in "/moneyline"
 //   - its two outcomes are tagged bookmakerOutcomeId "home" / "away"
 //   - prices come back as priceAmerican (string) when oddsFormat=american
@@ -18,12 +25,16 @@ const BASE = 'https://api.oddspapi.io/v4';
 const KEY = process.env.ODDSPAPI_KEY!;            // OddsPapi auth is a ?apiKey= query param
 const MLB_TOURNAMENT_ID = 109;
 
-// One call per book. Override via env (comma list) without redeploying code.
-// NOTE: these are best-guess slugs — confirm exact spellings via GET /v4/bookmakers.
-// A wrong slug just means that book is skipped, not a crash.
+// All 7 books pulled in a single combined call. Override via env (comma list) without
+// redeploying code. NOTE: these are best-guess slugs — confirm exact spellings via GET /v4/bookmakers.
+// A wrong slug just means that book is silently absent from the response, not a crash.
 const BOOKMAKERS = (process.env.ODDSPAPI_BOOKMAKERS ||
   'pinnacle,draftkings,fanduel,betmgm,caesars,kalshi,polymarket')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+// On-demand freshness window: skip the OddsPapi round-trip entirely if the newest quote
+// already in Supabase is younger than this. Tunable via env; 5 min is the default.
+const STALE_MS = Number(process.env.ODDSPAPI_STALE_MINUTES || 5) * 60 * 1000;
 
 // The feed labels prices "home"/"away" but never says which participant is home.
 // If the board ever shows teams reversed, flip this single flag.
@@ -42,12 +53,11 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 const qs = (o: Record<string, string | number>) =>
   Object.entries(o).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
 
-// OddsPapi rate-limits bursts, so we pace calls and back off politely on 429.
+// Kept for the (now rare) 429 retry — a single combined call rarely needs pacing, but a
+// courteous backoff costs nothing.
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const CALL_GAP_MS = Number(process.env.ODDSPAPI_CALL_GAP_MS || 1200);   // pause before each call
 
-// Let the function run long enough to pace 8 calls (Vercel Hobby allows up to 60s).
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 30 };
 
 async function getJson(url: string, retries = 2): Promise<any> {
   for (let attempt = 0; ; attempt++) {
@@ -116,35 +126,36 @@ function readMoneyline(bm: any): { home: number; away: number; isExchange: boole
   return { home, away, isExchange };
 }
 
-// ── 3. Loop books, merge venues per game ──
+// ── 3. One combined call for all books, then split per venue locally ──
 async function fetchMlbGames(): Promise<{ games: Game[]; diag: string[] }> {
   const names = await fetchTeamNames();
   const games = new Map<string, Game>();
   const diag: string[] = [];   // TEMP: per-book status so we can see why a book is silent
 
-  for (const book of BOOKMAKERS) {
-    await sleep(CALL_GAP_MS);   // stay under OddsPapi's burst limit
-    const url = `${BASE}/odds-by-tournaments?${qs({
-      tournamentIds: MLB_TOURNAMENT_ID, bookmaker: book, oddsFormat: 'american', apiKey: KEY,
-    })}`;
-    let fixtures: any[];
-    try {
-      fixtures = await getJson(url);
-    } catch (e: any) {
-      console.warn(`[poll-mlb] skip "${book}": ${e.message}`);   // bad slug / no coverage
-      diag.push(`${book}: ERROR ${String(e.message).slice(0, 90)}`);
-      continue;
-    }
+  const url = `${BASE}/odds-by-tournaments?${qs({
+    tournamentIds: MLB_TOURNAMENT_ID, bookmakers: BOOKMAKERS.join(','),
+    oddsFormat: 'american', apiKey: KEY,
+  })}`;
+  let fixtures: any[] = [];
+  try {
+    fixtures = await getJson(url);
+  } catch (e: any) {
+    console.warn(`[poll-mlb] combined odds call failed: ${e.message}`);
+    diag.push(`odds-by-tournaments: ERROR ${String(e.message).slice(0, 120)}`);
+  }
 
-    let withBook = 0, mlOk = 0;   // how many fixtures carried this book, how many gave a moneyline
-    for (const fx of fixtures) {
-      if (!fx?.hasOdds || !fx.bookmakerOdds) continue;
+  const perBook: Record<string, { withBook: number; mlOk: number }> = {};
+  for (const book of BOOKMAKERS) perBook[book] = { withBook: 0, mlOk: 0 };
+
+  for (const fx of fixtures) {
+    if (!fx?.hasOdds || !fx.bookmakerOdds) continue;
+    for (const book of BOOKMAKERS) {
       const bm = fx.bookmakerOdds[book];
       if (!bm || bm.suspended) continue;
-      withBook++;
+      perBook[book].withBook++;
       const ml = readMoneyline(bm);
       if (!ml) continue;
-      mlOk++;
+      perBook[book].mlOk++;
 
       let g = games.get(fx.fixtureId);
       if (!g) {
@@ -164,7 +175,9 @@ async function fetchMlbGames(): Promise<{ games: Game[]; diag: string[] }> {
       const q: VenueQuote = { key: book, type: 'book', homePrice: ml.home, awayPrice: ml.away };
       if (!g.venues.some((v) => v.key === book)) g.venues.push(q);
     }
-    diag.push(`${book}: ${fixtures.length} fixtures, ${withBook} carried book, ${mlOk} moneylines`);
+  }
+  for (const book of BOOKMAKERS) {
+    diag.push(`${book}: ${fixtures.length} fixtures, ${perBook[book].withBook} carried book, ${perBook[book].mlOk} moneylines`);
   }
 
   const lo = Date.now() - 60 * 60 * 1000;                 // 1h ago (keep just-started games)
@@ -178,9 +191,27 @@ async function fetchMlbGames(): Promise<{ games: Game[]; diag: string[] }> {
   return { games: kept, diag };
 }
 
+// ── 3b. On-demand freshness check — is Supabase's data young enough to skip OddsPapi? ──
+async function newestQuoteAgeMs(): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('mlb_quotes').select('updated_at').order('updated_at', { ascending: false }).limit(1);
+  if (error || !data || !data.length) return null;   // no rows yet -> treat as stale
+  return Date.now() - new Date(data[0].updated_at).getTime();
+}
+
 // ── 4. Compute board + write to Supabase ──
-export default async function handler(_req: any, res: any) {
+export default async function handler(req: any, res: any) {
   try {
+    const force = req?.query?.force === '1' || req?.query?.force === 'true';
+    if (!force) {
+      const ageMs = await newestQuoteAgeMs();
+      if (ageMs !== null && ageMs < STALE_MS) {
+        console.log(`[poll-mlb] skipped — data is ${Math.round(ageMs / 1000)}s old (< ${STALE_MS / 1000}s)`);
+        res.status(200).json({ ok: true, skipped: true, ageSeconds: Math.round(ageMs / 1000) });
+        return;
+      }
+    }
+
     const { games, diag } = await fetchMlbGames();
     const board = games.map(computeBoard);
     const now = new Date().toISOString();
@@ -205,7 +236,7 @@ export default async function handler(_req: any, res: any) {
     const locks = findArbs(games).length;
     const venuesSeen = [...new Set(games.flatMap((g) => g.venues.map((v) => v.key)))];
     console.log(`[poll-mlb] games=${games.length} venues=${venuesSeen.join(',')} locks=${locks}`);
-    res.status(200).json({ ok: true, games: games.length, venues: venuesSeen, locks, diag });
+    res.status(200).json({ ok: true, skipped: false, games: games.length, venues: venuesSeen, locks, diag });
   } catch (e: any) {
     console.error('[poll-mlb]', e);
     res.status(500).json({ ok: false, error: e.message });
